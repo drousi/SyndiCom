@@ -36,6 +36,31 @@ export async function createResidence(
   return newResidence;
 }
 
+export async function createResidenceWithAdmin(
+  data: Omit<Residence, 'id' | 'created_at' | 'updated_at'>,
+  userId: string
+): Promise<Residence> {
+  const { data: newResidence, error } = await supabase
+    .from('residences')
+    .insert([data])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const { error: linkError } = await supabase
+    .from('user_residences')
+    .insert([{
+      user_id: userId,
+      residence_id: newResidence.id,
+      role: 'admin'
+    }]);
+
+  if (linkError) throw linkError;
+
+  return newResidence;
+}
+
 export async function updateResidence(
   id: string,
   data: Partial<Omit<Residence, 'id' | 'created_at'>>,

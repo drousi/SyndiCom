@@ -3,14 +3,20 @@ import { Expense } from '../../types';
 
 export async function getExpensesByResidence(
   residenceId: string,
+  year?: number,
   limit?: number
 ): Promise<Expense[]> {
   let query = supabase
     .from('expenses')
     .select('*')
     .eq('residence_id', residenceId)
-    .eq('deleted', false)
-    .order('date', { ascending: false });
+    .eq('deleted', false);
+
+  if (year) {
+    query = query.gte('date', `${year}-01-01`).lte('date', `${year}-12-31`);
+  }
+
+  query = query.order('date', { ascending: false });
 
   if (limit) {
     query = query.limit(limit);
@@ -84,7 +90,8 @@ export async function getMonthlyExpensesTotal(
     .eq('residence_id', residenceId)
     .eq('deleted', false)
     .eq('status', 'paid')
-    .like('date', `${prefix}%`);
+    .gte('date', `${prefix}-01`)
+    .lte('date', `${prefix}-31`);
 
   if (error) throw error;
   return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);
@@ -95,8 +102,7 @@ export async function getTotalExpenses(residenceId: string): Promise<number> {
     .from('expenses')
     .select('amount')
     .eq('residence_id', residenceId)
-    .eq('deleted', false)
-    .eq('status', 'paid');
+    .eq('deleted', false);
 
   if (error) throw error;
   return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);

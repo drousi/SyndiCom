@@ -7,38 +7,43 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Image,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
-import { loginSchema, LoginFormData } from '../../src/schemas';
+import { registerSchema, RegisterFormData } from '../../src/schemas';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { signUp, isLoading, error, clearError } = useAuthStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+  const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { fullName: '', email: '', password: '', confirmPassword: '' },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: RegisterFormData) => {
     try {
       clearError();
-      await signIn(data.email, data.password);
-      router.replace('/(app)');
-    } catch {
-      // error set in store
+      await signUp(data.email, data.password, data.fullName);
+      
+      Alert.alert(
+        'Inscription réussie',
+        'Veuillez vérifier votre boîte mail pour confirmer votre adresse email avant de vous connecter.',
+        [{ text: 'Compris', onPress: () => router.replace('/(auth)/login') }]
+      );
+    } catch (err: any) {
+      // L'erreur est gérée dans le store et affichée via la variable error
     }
   };
 
@@ -61,8 +66,8 @@ export default function LoginScreen() {
 
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>Connexion</Text>
-          <Text style={styles.subtitle}>Connectez-vous à votre espace</Text>
+          <Text style={styles.title}>Créer un compte</Text>
+          <Text style={styles.subtitle}>Créez votre compte pour gérer votre immeuble</Text>
 
           {/* Global error */}
           {error && (
@@ -71,6 +76,24 @@ export default function LoginScreen() {
               <Text style={styles.errorBannerText}>{error}</Text>
             </View>
           )}
+
+          {/* Full Name */}
+          <Controller
+            control={control}
+            name="fullName"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                label="Nom complet"
+                placeholder="Ex: Jean Dupont"
+                autoCapitalize="words"
+                onChangeText={onChange}
+                onBlur={onBlur}
+                value={value}
+                error={errors.fullName?.message}
+                leftIcon={<Ionicons name="person-outline" size={18} color={Colors.textMuted} />}
+              />
+            )}
+          />
 
           {/* Email */}
           <Controller
@@ -119,17 +142,28 @@ export default function LoginScreen() {
             )}
           />
 
-          {/* Forgot */}
-          <TouchableOpacity
-            style={styles.forgotLink}
-            onPress={() => router.push('/(auth)/reset-password')}
-          >
-            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-          </TouchableOpacity>
+          {/* Confirm Password */}
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                label="Confirmer le mot de passe"
+                placeholder="••••••••"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                onChangeText={onChange}
+                onBlur={onBlur}
+                value={value}
+                error={errors.confirmPassword?.message}
+                leftIcon={<Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />}
+              />
+            )}
+          />
 
           {/* Submit */}
           <Button
-            label="Se connecter"
+            label="S'inscrire"
             onPress={handleSubmit(onSubmit)}
             isLoading={isLoading}
             fullWidth
@@ -137,11 +171,11 @@ export default function LoginScreen() {
             style={styles.submitBtn}
           />
 
-          {/* Register Link */}
-          <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Pas encore de compte ? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.registerLink}>S'inscrire</Text>
+          {/* Login Link */}
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Déjà un compte ? </Text>
+            <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+              <Text style={styles.loginLink}>Se connecter</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -160,33 +194,13 @@ const createStyles = (Colors: any) => StyleSheet.create({
     gap: Spacing.xxl,
   },
 
-  // Header
   header: { alignItems: 'center', gap: Spacing.sm },
-  logoContainer: { marginBottom: Spacing.sm },
-  logoIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: Colors.navyCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.navyBorder,
-  },
-  appName: {
-    fontSize: FontSize.xxxl,
-    fontWeight: FontWeight.extrabold,
-    color: Colors.white,
-    letterSpacing: -0.5,
-  },
-  appNameGreen: { color: Colors.primary },
   tagline: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     fontWeight: FontWeight.regular,
   },
 
-  // Card
   card: {
     backgroundColor: Colors.surfaceCard,
     borderRadius: Radius.xl,
@@ -221,26 +235,19 @@ const createStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
   },
 
-  forgotLink: { alignSelf: 'flex-end' },
-  forgotText: {
-    fontSize: FontSize.sm,
-    color: Colors.primary,
-    fontWeight: FontWeight.medium,
-  },
-
   submitBtn: { marginTop: Spacing.sm },
 
-  registerContainer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.md,
   },
-  registerText: {
+  loginText: {
     fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
-  registerLink: {
+  loginLink: {
     fontSize: FontSize.sm,
     color: Colors.primary,
     fontWeight: FontWeight.bold,

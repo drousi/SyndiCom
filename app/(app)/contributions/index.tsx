@@ -10,6 +10,7 @@ import * as Print from 'expo-print';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { Logo } from '../../../src/components/ui/Logo';
@@ -17,16 +18,17 @@ import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '.
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
 import { getContributionsByResidence, createContribution, updateContribution, getTotalContributions } from '../../../src/db/repositories/contributions';
-import { getTotalExpenses } from '../../../src/db/repositories/expenses';
+import { getTotalExpenses, getExpensesByResidence } from '../../../src/db/repositories/expenses';
 import { Button } from '../../../src/components/ui/Button';
 import { SelectInput } from '../../../src/components/ui/SelectInput';
 import { DatePickerModal } from '../../../src/components/ui/DatePickerModal';
-import type { Apartment, Contribution } from '../../../src/types';
+import type { Apartment, Contribution, Expense } from '../../../src/types';
 
 export default function ContributionsScreen() {
   const { profile, activeResidence, hasPermission } = useAuthStore();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [totalExpenses, setTotalExpenses] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,7 @@ export default function ContributionsScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuAnim = useSharedValue(0);
   const viewShotRef = useRef<ViewShot>(null);
+  const processingCellsRef = useRef<Set<string>>(new Set());
 
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
@@ -55,14 +58,16 @@ export default function ContributionsScreen() {
   const loadData = useCallback(async () => {
     if (!activeResidence) return;
     try {
-      const [apts, contribs, totalContribs, totalExp] = await Promise.all([
+      const [apts, contribs, totalContribs, totalExp, expList] = await Promise.all([
         getApartmentsByResidence(activeResidence.id),
         getContributionsByResidence(activeResidence.id, currentYear),
         getTotalContributions(activeResidence.id),
-        getTotalExpenses(activeResidence.id)
+        getTotalExpenses(activeResidence.id),
+        getExpensesByResidence(activeResidence.id, currentYear)
       ]);
       setApartments(apts.filter(a => a.active));
       setContributions(contribs);
+      setExpenses(expList);
       setBalance(totalContribs - totalExp);
       setTotalExpenses(totalExp);
     } catch (e) {
@@ -117,72 +122,190 @@ export default function ContributionsScreen() {
     try {
       setIsSubmitting(true);
       
+      // Construire le ledger (journal des opérations)
+      const ops: any[] = [];
+      contributions.filter(c => c.paid).forEach(c => {
+        ops.push({
+          date: c.paid_at || c.created_at,
+          desc: `Cotisation App. ${apartments.find(a => a.id === c.apartment_id)?.number || ''} (${MONTHS_SHORT_FR[c.month-1]} ${c.year})`,
+          sign: '+',
+          amount: c.amount
+        });
+      });
+      expenses.forEach(e => {
+        ops.push({
+          date: e.date,
+          desc: e.description || e.type,
+          sign: '-',
+          amount: e.amount
+        });
+      });
+      
+      // Trier par date
+      ops.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      // Calculer le solde courant
+      let currentBalance = 0;
+      ops.forEach(op => {
+        currentBalance += op.sign === '+' ? op.amount : -op.amount;
+        op.balance = currentBalance;
+      });
+
+      // Séparer en 2 colonnes pour l'affichage côte à côte
+      const half = Math.ceil(ops.length / 2);
+      const opsLeft = ops.slice(0, half);
+      const opsRight = ops.slice(half);
+
+      const renderLedgerRows = (list: any[]) => {
+        if (list.length === 0) return '<tr><td colspan="5">-</td></tr>';
+        return list.map(op => `
+          <tr>
+            <td>${new Date(op.date).toLocaleDateString('fr-FR')}</td>
+            <td style="text-align: left;">${op.desc}</td>
+            <td style="color: ${op.sign === '+' ? '#4CAF50' : '#EF4444'}; font-weight: bold;">${op.sign}</td>
+            <td style="color: ${op.sign === '+' ? '#4CAF50' : '#EF4444'}; font-weight: bold;">${op.amount}</td>
+            <td>${op.balance}</td>
+          </tr>
+        `).join('');
+      };
+
+      const totalExp = totalExpenses ?? 0;
+      const currentBal = balance ?? 0;
+      const totalContribs = currentBal + totalExp;
+
       const html = `
         <html>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
             <style>
               body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-              h1 { text-align: center; color: #1e3a8a; }
-              h3 { text-align: center; color: #6b7280; margin-bottom: 30px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-              th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: center; }
-              th { background-color: #f3f4f6; font-weight: bold; color: #1f2937; }
-              .corner { background-color: #f3f4f6; }
-              .paid { color: #10b981; font-weight: bold; }
-              .partial { color: #f59e0b; font-weight: bold; }
-              .total { background-color: #f3f4f6; font-weight: bold; }
+              h1 { text-align: center; color: #0D1B2A; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
+              
+              .summary-cards { display: flex; gap: 15px; margin-bottom: 25px; }
+              .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #E2E8F0; }
+              .card-green { background-color: rgba(76, 175, 80, 0.1); border-color: #4CAF50; color: #388E3C; }
+              .card-danger { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; color: #B91C1C; }
+              .card-navy { background-color: rgba(13, 27, 42, 0.1); border-color: #0D1B2A; color: #0D1B2A; }
+              .card-title { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+              .card-value { font-size: 16px; font-weight: bold; }
+
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+              th, td { border: 1px solid #E2E8F0; padding: 6px; text-align: center; }
+              thead th { background-color: #1B263B; color: #FFF; border-color: #1B263B; }
+              tbody tr:nth-child(even) { background-color: #F8FAFC; }
+              tbody tr:nth-child(even) th { background-color: #F8FAFC; }
+              tfoot th { background-color: #F1F5F9; color: #0D1B2A; font-weight: bold; }
+              
+              .ledger-container { display: flex; gap: 15px; margin-top: 25px; align-items: flex-start; }
+              .ledger-half { flex: 1; }
+              .ledger-title { text-align: center; font-weight: bold; font-size: 12px; margin-bottom: 10px; color: #4CAF50; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
+              .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; }
             </style>
           </head>
           <body>
-            <h1>${activeResidence?.name || 'SyndiCom'}</h1>
-            <h3>Situation des cotisations - ${new Date().toLocaleDateString('fr-FR')}</h3>
+            <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - SYNDIC DE L'IMMEUBLE</h1>
             
+            <div class="summary-cards">
+              <div class="card card-green">
+                <div class="card-title">Total Contributions</div>
+                <div class="card-value">${totalContribs.toLocaleString('fr-MA')} DH</div>
+              </div>
+              <div class="card card-danger">
+                <div class="card-title">Total Dépenses</div>
+                <div class="card-value">${totalExp.toLocaleString('fr-MA')} DH</div>
+              </div>
+              <div class="card card-navy">
+                <div class="card-title">Reste à la Caisse</div>
+                <div class="card-value">${currentBal.toLocaleString('fr-MA')} DH</div>
+              </div>
+            </div>
+
             <table>
               <thead>
                 <tr>
-                  <th class="corner">Mois \\ Appart.</th>
-                  ${apartments.map(apt => `<th>App. ${apt.number}<br/><small>${apt.owner_name || 'N/A'}</small></th>`).join('')}
+                  <th>APPARTEMENT</th>
+                  ${Array.from({ length: 12 }, (_, i) => `<th>${MONTHS_SHORT_FR[i].toUpperCase()}</th>`).join('')}
+                  <th>TOTAL ANNUEL</th>
                 </tr>
               </thead>
               <tbody>
-                ${Array.from({ length: 12 }, (_, i) => i + 1).map(month => `
+                ${apartments.map(apt => {
+                  const aptTotal = contributions.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
+                  return `
                   <tr>
-                    <th>${MONTHS_SHORT_FR[month-1]}</th>
-                    ${apartments.map(apt => {
-                      const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === month);
-                      if (contrib && contrib.paid) {
-                        return `<td class="paid">${contrib.amount} DH</td>`;
-                      } else if (contrib && !contrib.paid && contrib.amount > 0) {
-                        return `<td class="partial">${contrib.amount} DH</td>`;
-                      } else {
-                        return `<td>-</td>`;
-                      }
+                    <th>${apt.number}</th>
+                    ${Array.from({ length: 12 }, (_, i) => {
+                      const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === i + 1);
+                      if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
+                      return `<td></td>`;
                     }).join('')}
+                    <th style="background-color: transparent;">${aptTotal > 0 ? aptTotal : ''}</th>
                   </tr>
-                `).join('')}
+                  `;
+                }).join('')}
               </tbody>
               <tfoot>
                 <tr>
-                  <th class="total">Total</th>
-                  ${apartments.map(apt => {
-                    const aptTotal = contributions
-                      .filter(c => c.apartment_id === apt.id)
-                      .reduce((sum, c) => sum + c.amount, 0);
-                    return `<td class="total">${aptTotal} DH</td>`;
+                  <th style="text-align: left;">TOTAL PAR MOIS</th>
+                  ${Array.from({ length: 12 }, (_, i) => {
+                    const monthTotal = contributions.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
+                    return `<th>${monthTotal > 0 ? monthTotal : ''}</th>`;
                   }).join('')}
+                  <th>${contributions.reduce((sum, c) => sum + c.amount, 0)}</th>
                 </tr>
               </tfoot>
             </table>
+
+            <div class="ledger-container">
+              <div class="ledger-half">
+                <div class="ledger-title">Dépenses et Contributions (1/2)</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>DATE</th>
+                      <th>DESCRIPTION</th>
+                      <th>+ / -</th>
+                      <th>MONTANT</th>
+                      <th>SOLDE</th>
+                    </tr>
+                  </thead>
+                  <tbody>${renderLedgerRows(opsLeft)}</tbody>
+                </table>
+              </div>
+              <div class="ledger-half">
+                <div class="ledger-title">Dépenses et Contributions (2/2)</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>DATE</th>
+                      <th>DESCRIPTION</th>
+                      <th>+ / -</th>
+                      <th>MONTANT</th>
+                      <th>SOLDE</th>
+                    </tr>
+                  </thead>
+                  <tbody>${renderLedgerRows(opsRight)}</tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="legend">
+              + = CRÉDIT (AUGMENTE LE SOLDE) | - = DÉBIT (DIMINUE LE SOLDE)
+            </div>
           </body>
         </html>
       `;
 
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       
-      await Sharing.shareAsync(uri, {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const safeResidenceName = (activeResidence?.name || 'SyndiCom').replace(/[^a-z0-9]/gi, '_');
+      const newUri = `${FileSystem.cacheDirectory}${safeResidenceName}_${dateStr}.pdf`;
+      await FileSystem.moveAsync({ from: uri, to: newUri });
+      
+      await Sharing.shareAsync(newUri, {
         mimeType: 'application/pdf',
-        dialogTitle: 'Partager la matrice des cotisations',
+        dialogTitle: 'Partager le rapport complet',
         UTI: 'com.adobe.pdf'
       });
       
@@ -235,9 +358,14 @@ export default function ContributionsScreen() {
   const handleCellDoubleTap = async (apt: Apartment, month: number, contrib?: Contribution) => {
     if (!activeResidence || !profile) return;
     
+    const cellKey = `${apt.id}_${month}`;
+    if (processingCellsRef.current.has(cellKey)) return;
+    processingCellsRef.current.add(cellKey);
+
     if (contrib) {
       // Optimistic delete
       setContributions(prev => prev.filter(c => c.id !== contrib.id));
+      setBalance(prev => (prev ?? 0) - monthlyFee);
       
       // Background delete
       try {
@@ -246,9 +374,10 @@ export default function ContributionsScreen() {
         if (!data || data.length === 0) {
           throw new Error("Impossible de supprimer. Vérifiez vos permissions (Policy RLS).");
         }
+        processingCellsRef.current.delete(cellKey);
       } catch (e: any) { 
         Alert.alert('Erreur', e.message); 
-        loadData(); // Revert on failure
+        loadData().finally(() => processingCellsRef.current.delete(cellKey));
       }
     } else {
       // Optimistic create
@@ -269,10 +398,11 @@ export default function ContributionsScreen() {
       };
       
       setContributions(prev => [...prev, newContrib]);
+      setBalance(prev => (prev ?? 0) + monthlyFee);
 
       // Background create
       try {
-        await createContribution({
+        const newRecord = await createContribution({
           residence_id: activeResidence.id,
           apartment_id: apt.id,
           month,
@@ -283,10 +413,11 @@ export default function ContributionsScreen() {
           comment: null,
           created_by: profile.id
         });
-        loadData(); // Sync real DB ID in background
+        setContributions(prev => prev.map(c => c.id === tempId ? newRecord : c));
+        processingCellsRef.current.delete(cellKey);
       } catch (e: any) {
         Alert.alert('Erreur', 'Impossible de créer la contribution: ' + e.message);
-        loadData(); // Revert on failure
+        loadData().finally(() => processingCellsRef.current.delete(cellKey));
       }
     }
   };
@@ -378,8 +509,10 @@ export default function ContributionsScreen() {
         }
       }
       
+      // Optimistic update for the card
+      setBalance(prev => (prev ?? 0) + Number(amount));
       setModalVisible(false);
-      loadData();
+      setTimeout(() => loadData(), 500);
     } catch (e: any) {
       Alert.alert('Erreur', e.message);
     } finally {
@@ -490,30 +623,40 @@ export default function ContributionsScreen() {
           <Text style={styles.headerTitle}>Contributions</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-          <TouchableOpacity style={styles.yearBtn} onPress={() => setCurrentYear(y => y - 1)}>
-            <Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.yearText}>{currentYear}</Text>
-          <TouchableOpacity style={styles.yearBtn} onPress={() => setCurrentYear(y => y + 1)}>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textPrimary} />
+          <TouchableOpacity style={{ padding: Spacing.xs }}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Balance Card */}
       {balance !== null && totalExpenses !== null && (
-        <View style={{ flexDirection: 'row', marginHorizontal: Spacing.xl, marginBottom: Spacing.md, padding: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.md }}>
-            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-            <Text style={{ color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: FontWeight.bold }}>
-              {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} {activeResidence?.currency ?? 'DH'}
-            </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.xl, marginBottom: Spacing.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
+          {/* Year Selector */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
+            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y - 1)}>
+              <Ionicons name="chevron-back" size={16} color={Colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginHorizontal: 2 }}>{currentYear}</Text>
+            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y + 1)}>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} />
+            </TouchableOpacity>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Solde en caisse</Text>
-            <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.md, fontWeight: FontWeight.bold }}>
-              {balance.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} {activeResidence?.currency ?? 'DH'}
-            </Text>
+          
+          {/* Balances */}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
+              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
+              <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {balance.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -573,20 +716,27 @@ export default function ContributionsScreen() {
               </View>
 
               {balance !== null && totalExpenses !== null && (
-                <View style={{ flexDirection: 'row', marginBottom: Spacing.xl, padding: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.md }}>
-                    <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-                    <Text style={{ color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: FontWeight.bold }}>
-                      {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} {activeResidence?.currency ?? 'DH'}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                    <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Solde en caisse</Text>
-                    <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.md, fontWeight: FontWeight.bold }}>
-                      {balance.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} {activeResidence?.currency ?? 'DH'}
-                    </Text>
-                  </View>
-                </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.xl, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
+            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary }}>Année {currentYear}</Text>
+          </View>
+          
+          {/* Balances */}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
+              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
+              <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {balance.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+          </View>
+        </View>
               )}
 
               <View style={[styles.tableContainer, { flexDirection: 'row', borderLeftWidth: 0 }]}>
@@ -729,7 +879,8 @@ export default function ContributionsScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+function createStyles(Colors: any) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
   
@@ -751,7 +902,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
 
   row: { flexDirection: 'row' },
   cell: {
-    width: 90, height: 45,
+    width: 90, height: 38,
     borderBottomWidth: 1, borderRightWidth: 1, borderColor: Colors.navyBorder,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.navy,
@@ -826,3 +977,4 @@ const createStyles = (Colors: any) => StyleSheet.create({
   
   modalActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });
+}

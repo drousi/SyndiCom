@@ -26,7 +26,7 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  const { isAuthenticated, isLoading, systemRole, profile, loadSession } = useAuthStore();
+  const { isAuthenticated, isLoading, systemRole, profile, loadSession, residences } = useAuthStore();
   const Colors = useThemeColors();
   const isDark = useThemeStore((state) => state.getIsDark());
   const router = useRouter();
@@ -90,13 +90,21 @@ export default function RootLayout() {
         router.replace('/(superuser)');
       }
     } else {
-      if (!inApp) {
-        hasNavigated.current = true;
-        router.replace('/(app)');
+      const inOnboarding = segments[0] === '(onboarding)';
+      if (residences.length === 0) {
+        if (!inOnboarding) {
+          hasNavigated.current = true;
+          router.replace('/(onboarding)' as any);
+        }
+      } else {
+        if (!inApp) {
+          hasNavigated.current = true;
+          router.replace('/(app)');
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isLoading, systemRole, profile?.force_password_change, navigationState?.key]);
+  }, [isAuthenticated, isLoading, systemRole, profile?.force_password_change, navigationState?.key, residences.length]);
 
   if (!fontsLoaded) return null;
 
@@ -108,6 +116,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(superuser)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="(onboarding)" />
       </Stack>
     </DialogProvider>
   );

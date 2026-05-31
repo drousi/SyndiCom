@@ -127,8 +127,7 @@ export async function getMonthlyContributionsTotal(
     .select('amount')
     .eq('residence_id', residenceId)
     .eq('month', month)
-    .eq('year', year)
-    .eq('paid', true);
+    .eq('year', year);
 
   if (error) throw error;
   return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);
@@ -138,8 +137,7 @@ export async function getTotalContributions(residenceId: string): Promise<number
   const { data, error } = await supabase
     .from('contributions')
     .select('amount')
-    .eq('residence_id', residenceId)
-    .eq('paid', true);
+    .eq('residence_id', residenceId);
 
   if (error) throw error;
   return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as Linking from 'expo-linking';
 import { supabase } from '../supabase/client';
 import { Profile, SystemRole, ResidenceRole, ResidenceWithRole, PermissionAction } from '../types';
 
@@ -15,6 +16,7 @@ interface AuthState {
 
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   loadSession: () => Promise<void>;
@@ -131,6 +133,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let msg = e?.message ?? 'Erreur de connexion';
       if (msg.includes('Invalid login credentials')) msg = 'Email ou mot de passe incorrect';
       if (msg.includes('Email not confirmed')) msg = 'Veuillez confirmer votre email';
+      set({ error: msg });
+      throw e;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signUp: async (email, password, fullName) => {
+    try {
+      set({ isLoading: true, error: null });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          emailRedirectTo: Linking.createURL('/'),
+        },
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      let msg = e?.message ?? 'Erreur lors de l\'inscription';
+      if (msg.includes('User already registered')) msg = 'Cet email est déjà utilisé';
       set({ error: msg });
       throw e;
     } finally {

@@ -4,12 +4,12 @@
     "slug": "syndicom",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.svg",
     "scheme": "syndicom",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/syndicom.svg",
       "resizeMode": "contain",
       "backgroundColor": "#0D1B2A"
     },
@@ -19,15 +19,17 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/logo.svg",
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
+      "versionCode": 2,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -47,6 +49,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1e54d5f1-7dd8-4d07-b3f4-68c26a713d7a"
+      }
     }
   }
 }

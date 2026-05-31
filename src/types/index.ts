@@ -195,6 +195,7 @@ export interface ActivityLog {
 
 export interface DashboardStats {
   balance: number;
+  totalExpenses: number;
   monthlyContributions: number;
   monthlyExpenses: number;
   paidApartments: number;
