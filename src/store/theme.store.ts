@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
-import { Appearance } from 'react-native';
+import { Appearance, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const secureStorage = {
   getItem: (name: string) => {
@@ -28,7 +32,24 @@ export const useThemeStore = create<ThemeState>()(
     (set, get) => ({
       mode: 'dark', // Default to dark since the app was designed for it
       
-      setMode: (mode: ThemeMode) => set({ mode }),
+      setMode: (mode: ThemeMode) => {
+        const customTransition = {
+          duration: 600, // Une transition de 600ms plus douce
+          create: {
+            type: LayoutAnimation.Types.easeInEaseOut,
+            property: LayoutAnimation.Properties.opacity,
+          },
+          update: {
+            type: LayoutAnimation.Types.easeInEaseOut,
+          },
+          delete: {
+            type: LayoutAnimation.Types.easeInEaseOut,
+            property: LayoutAnimation.Properties.opacity,
+          },
+        };
+        LayoutAnimation.configureNext(customTransition);
+        set({ mode });
+      },
       
       getIsDark: () => {
         const { mode } = get();

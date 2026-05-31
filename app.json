@@ -2,28 +2,33 @@
   "expo": {
     "name": "SyndiCom",
     "slug": "syndicom",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/logo.svg",
+    "icon": "./assets/icon.png",
     "scheme": "syndicom",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/syndicom.svg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0D1B2A"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.syndicom.app"
+      "bundleIdentifier": "com.syndicom.app",
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.svg",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
-      "versionCode": 2,
+      "versionCode": 3,
+      "navigationBar": {
+        "backgroundColor": "#0D1B2A",
+        "barStyle": "light-content"
+      },
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",

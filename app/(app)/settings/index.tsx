@@ -53,7 +53,7 @@ export default function SettingsScreen() {
 
       if (profileError) throw profileError;
       
-      await loadSession();
+      await loadSession(true);
       setIsEditingProfile(false);
       Alert.alert('Succès', 'Profil mis à jour.');
     } catch (e: any) {

@@ -19,7 +19,7 @@ interface AuthState {
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  loadSession: () => Promise<void>;
+  loadSession: (background?: boolean) => Promise<void>;
   setActiveResidence: (residence: ResidenceWithRole) => void;
   clearError: () => void;
 
@@ -41,9 +41,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   error: null,
 
-  loadSession: async () => {
+  loadSession: async (background = false) => {
     try {
-      set({ isLoading: true });
+      if (!background) {
+        set({ isLoading: true });
+      }
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
@@ -77,7 +79,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           updated_at: session.user.created_at,
         };
         
-        await supabase.from('profiles').upsert(profile);
+        const { error: upsertError } = await supabase.from('profiles').upsert(profile);
+        if (upsertError) {
+          console.warn('[Auth] Profile upsert failed, user might be deleted. Signing out.');
+          await supabase.auth.signOut();
+          set({ profile: null, isAuthenticated: false });
+          return;
+        }
       }
 
       // 2. Load residences + roles for this user
@@ -92,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         residencesWithRole = (allResidences ?? []).map(r => ({ ...r, role: 'admin' as ResidenceRole }));
       } else {
         // Load from user_residences
-        const { data: userResidences } = await supabase
+        const { data: userResidences, error: urError } = await supabase
           .from('user_residences')
           .select('*, residences(*)')
           .eq('user_id', uid);

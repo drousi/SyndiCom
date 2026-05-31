@@ -36,7 +36,7 @@ export default function LoginScreen() {
     try {
       clearError();
       await signIn(data.email, data.password);
-      router.replace('/(app)');
+      // The central layout (_layout.tsx) will handle routing automatically
     } catch {
       // error set in store
     }
@@ -196,7 +196,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   title: {
     fontSize: FontSize.xxl,
     fontWeight: FontWeight.bold,
-    color: Colors.textDark,
+    color: Colors.textPrimary,
   },
   subtitle: {
     fontSize: FontSize.sm,

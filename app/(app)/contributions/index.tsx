@@ -130,6 +130,7 @@ export default function ContributionsScreen() {
       contributions.filter(c => c.paid).forEach(c => {
         ops.push({
           date: c.paid_at || c.created_at,
+          created_at: c.created_at,
           desc: `Cotisation App. ${apartments.find(a => a.id === c.apartment_id)?.number || ''} (${MONTHS_SHORT_FR[c.month-1]} ${c.year})`,
           sign: '+',
           amount: c.amount
@@ -138,14 +139,15 @@ export default function ContributionsScreen() {
       expenses.forEach(e => {
         ops.push({
           date: e.date,
+          created_at: e.created_at,
           desc: e.description || e.type,
           sign: '-',
           amount: e.amount
         });
       });
       
-      // Trier par date
-      ops.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Trier par ordre d'ajout dans la base de données
+      ops.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       
       // Calculer le solde courant
       let currentBalance = 0;
@@ -154,22 +156,20 @@ export default function ContributionsScreen() {
         op.balance = currentBalance;
       });
 
-      // Séparer en 2 colonnes pour l'affichage côte à côte
-      const half = Math.ceil(ops.length / 2);
-      const opsLeft = ops.slice(0, half);
-      const opsRight = ops.slice(half);
-
       const renderLedgerRows = (list: any[]) => {
         if (list.length === 0) return '<tr><td colspan="5">-</td></tr>';
-        return list.map(op => `
-          <tr>
-            <td>${new Date(op.date).toLocaleDateString('fr-FR')}</td>
-            <td style="text-align: left;">${op.desc}</td>
-            <td style="color: ${op.sign === '+' ? '#4CAF50' : '#EF4444'}; font-weight: bold;">${op.sign}</td>
-            <td style="color: ${op.sign === '+' ? '#4CAF50' : '#EF4444'}; font-weight: bold;">${op.amount}</td>
-            <td>${op.balance}</td>
+        return list.map(op => {
+          const color = op.sign === '+' ? '#388E3C' : '#D32F2F'; // Darker shades for text readability
+          return `
+          <tr style="color: ${color};">
+            <td style="border-color: #E2E8F0;">${new Date(op.date).toLocaleDateString('fr-FR')}</td>
+            <td style="text-align: left; border-color: #E2E8F0; font-weight: 500;">${op.desc}</td>
+            <td style="font-weight: bold; border-color: #E2E8F0;">${op.sign}</td>
+            <td style="font-weight: bold; border-color: #E2E8F0;">${op.amount}</td>
+            <td style="border-color: #E2E8F0;">${op.balance}</td>
           </tr>
-        `).join('');
+          `;
+        }).join('');
       };
 
       const totalExp = totalExpenses ?? 0;
@@ -192,21 +192,26 @@ export default function ContributionsScreen() {
               .card-title { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
               .card-value { font-size: 16px; font-weight: bold; }
 
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; page-break-inside: auto; }
+              tr { page-break-inside: avoid; page-break-after: auto; }
+              thead { display: table-header-group; }
+              tfoot { display: table-footer-group; }
               th, td { border: 1px solid #E2E8F0; padding: 6px; text-align: center; }
               thead th { background-color: #1B263B; color: #FFF; border-color: #1B263B; }
+              
+              /* Zebra lines for all tables */
               tbody tr:nth-child(even) { background-color: #F8FAFC; }
               tbody tr:nth-child(even) th { background-color: #F8FAFC; }
+              
               tfoot th { background-color: #F1F5F9; color: #0D1B2A; font-weight: bold; }
               
-              .ledger-container { display: flex; gap: 15px; margin-top: 25px; align-items: flex-start; }
-              .ledger-half { flex: 1; }
-              .ledger-title { text-align: center; font-weight: bold; font-size: 12px; margin-bottom: 10px; color: #4CAF50; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
-              .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; }
+              .ledger-container { margin-top: 30px; }
+              .ledger-title { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #0D1B2A; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
+              .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; text-align: center; }
             </style>
           </head>
           <body>
-            <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - SYNDIC DE L'IMMEUBLE</h1>
+            <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - ${(activeResidence?.name || "SYNDIC DE L'IMMEUBLE").toUpperCase()}</h1>
             
             <div class="summary-cards">
               <div class="card card-green">
@@ -223,7 +228,7 @@ export default function ContributionsScreen() {
               </div>
             </div>
 
-            <table>
+            <table class="grid-table">
               <thead>
                 <tr>
                   <th>APPARTEMENT</th>
@@ -234,9 +239,10 @@ export default function ContributionsScreen() {
               <tbody>
                 ${apartments.map(apt => {
                   const aptTotal = contributions.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
+                  const residentName = apt.owner_name ? ` (${apt.owner_name})` : '';
                   return `
                   <tr>
-                    <th>${apt.number}</th>
+                    <th>${apt.number}${residentName}</th>
                     ${Array.from({ length: 12 }, (_, i) => {
                       const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === i + 1);
                       if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
@@ -260,36 +266,19 @@ export default function ContributionsScreen() {
             </table>
 
             <div class="ledger-container">
-              <div class="ledger-half">
-                <div class="ledger-title">Dépenses et Contributions (1/2)</div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>DATE</th>
-                      <th>DESCRIPTION</th>
-                      <th>+ / -</th>
-                      <th>MONTANT</th>
-                      <th>SOLDE</th>
-                    </tr>
-                  </thead>
-                  <tbody>${renderLedgerRows(opsLeft)}</tbody>
-                </table>
-              </div>
-              <div class="ledger-half">
-                <div class="ledger-title">Dépenses et Contributions (2/2)</div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>DATE</th>
-                      <th>DESCRIPTION</th>
-                      <th>+ / -</th>
-                      <th>MONTANT</th>
-                      <th>SOLDE</th>
-                    </tr>
-                  </thead>
-                  <tbody>${renderLedgerRows(opsRight)}</tbody>
-                </table>
-              </div>
+              <div class="ledger-title">Journal Chronologique des Opérations</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>DATE</th>
+                    <th>DESCRIPTION</th>
+                    <th>MOUVEMENT</th>
+                    <th>MONTANT</th>
+                    <th>SOLDE</th>
+                  </tr>
+                </thead>
+                <tbody>${renderLedgerRows(ops)}</tbody>
+              </table>
             </div>
 
             <div class="legend">
@@ -302,7 +291,7 @@ export default function ContributionsScreen() {
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       
       const dateStr = new Date().toISOString().split('T')[0];
-      const safeResidenceName = (activeResidence?.name || 'SyndiCom').replace(/[^a-z0-9]/gi, '_');
+      const safeResidenceName = (activeResidence?.name || 'SYNDICOM').replace(/[^a-z0-9]/gi, '_').toUpperCase();
       const newUri = `${FileSystem.cacheDirectory}${safeResidenceName}_${dateStr}.pdf`;
       await FileSystem.moveAsync({ from: uri, to: newUri });
       
@@ -450,7 +439,9 @@ export default function ContributionsScreen() {
         
         const contrib = aptContribs.find(c => c.month === month);
         const currentPaid = contrib ? contrib.amount : 0;
-        const needed = monthlyFee - currentPaid;
+        
+        // Si le mois est déjà marqué comme "payé" (même à un ancien tarif), on ne réclame pas la différence
+        let needed = (contrib && contrib.paid) ? 0 : (monthlyFee - currentPaid);
         
         if (needed > 0) {
           const toAllocate = Math.min(needed, remainingAmount);

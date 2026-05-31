@@ -28,14 +28,11 @@ export default function ApartmentsScreen() {
 
   const loadData = useCallback(async () => {
     if (!activeResidence) { 
-      console.log('[Apartments] No active residence');
       setLoading(false); 
       return; 
     }
-    console.log('[Apartments] Loading for residence:', activeResidence.id);
     try {
       const data = await getApartmentsByResidence(activeResidence.id);
-      console.log('[Apartments] Loaded data count:', data.length);
       setApartments(data);
     } catch (e) {
       console.error('[Apartments] Load error:', e);

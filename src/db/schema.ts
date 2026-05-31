@@ -166,8 +166,6 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_payment_declarations_status ON payment_declarations(status);
     CREATE INDEX IF NOT EXISTS idx_sync_queue_synced ON sync_queue(synced);
   `);
-
-  console.log('[DB] SQLite v2 initialized');
 }
 
 async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
@@ -232,6 +230,4 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
       );
     `);
   }
-
-  console.log('[DB] Migrations applied');
 }

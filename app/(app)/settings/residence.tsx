@@ -52,11 +52,20 @@ export default function ResidenceSettingsScreen() {
         monthly_fee: data.monthly_fee,
       }, profile?.id);
 
-      // Refresh stores
-      await loadSession();
+      // Refresh stores in background to avoid unmounting the app layout
+      await loadSession(true);
 
       Alert.alert('Succès', 'Paramètres mis à jour.', [
-        { text: 'OK', onPress: () => router.back() }
+        { 
+          text: 'OK', 
+          onPress: () => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(app)/settings');
+            }
+          }
+        }
       ]);
     } catch (e: any) {
       Alert.alert('Erreur', e?.message ?? 'Impossible de mettre à jour');
@@ -73,7 +82,7 @@ export default function ResidenceSettingsScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/settings')}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paramètres de la résidence</Text>
