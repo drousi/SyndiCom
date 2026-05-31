@@ -11,23 +11,12 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '../../src/store/auth.store';
-import { Logo } from '../../src/components/ui/Logo';
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../src/constants/theme';
-import {
-  getTotalContributions,
-  getContributionsByResidence,
-} from '../../src/db/repositories/contributions';
-import {
-  getTotalExpenses,
-  getExpensesByResidence,
-} from '../../src/db/repositories/expenses';
-import { getApartmentsByResidence } from '../../src/db/repositories/apartments';
+import { useDashboardData } from '../../src/hooks/useDashboardData';
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../src/constants/app';
-import type { DashboardStats, RecentOperation, Apartment, Contribution, Expense } from '../../src/types';
+import { generateDashboardPDF } from '../../src/services/pdf.service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -36,304 +25,38 @@ export default function DashboardScreen() {
   const { activeResidence } = useAuthStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentOps, setRecentOps] = useState<RecentOperation[]>([]);
-  const [unpaidAptsList, setUnpaidAptsList] = useState<Apartment[]>([]);
-  const [allApts, setAllApts] = useState<Apartment[]>([]);
-  const [allContribs, setAllContribs] = useState<Contribution[]>([]);
-  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const currentMonth = new Date().getMonth() + 1;
 
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const residenceName = activeResidence?.name;
+  const {
+    stats,
+    recentOps,
+    unpaidAptsList,
+    allApts,
+    allContribs,
+    allExpenses,
+    isLoading,
+    refetch
+  } = useDashboardData(activeResidence?.id, currentYear, currentMonth);
 
-  const loadData = useCallback(async () => {
-    if (!activeResidence) { setLoading(false); return; }
-    try {
-      const [totalContribs, totalExpenses, apartments, contributions, expenses] = await Promise.all([
-        getTotalContributions(activeResidence.id),
-        getTotalExpenses(activeResidence.id),
-        getApartmentsByResidence(activeResidence.id),
-        getContributionsByResidence(activeResidence.id, currentYear),
-        getExpensesByResidence(activeResidence.id, currentYear),
-      ]);
+  const [refreshing, setRefreshing] = useState(false);
 
-      const activeApts = apartments.filter(a => a.active);
-      
-      // Calculate monthly contributions locally
-      const monthContribsData = contributions.filter(c => c.month === currentMonth);
-      const paidCount = monthContribsData.filter(c => c.paid).length;
-      const monthContribs = monthContribsData.reduce((sum, c) => sum + (c.amount || 0), 0);
-      
-      // Calculate monthly expenses locally
-      const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-      const monthExpenses = expenses
-        .filter(e => e.date.startsWith(monthPrefix))
-        .reduce((sum, e) => sum + (e.amount || 0), 0);
-
-      const unpaidCount = activeApts.length - paidCount;
-      const balance = totalContribs - totalExpenses;
-
-      setStats({
-        balance,
-        totalExpenses,
-        monthlyContributions: monthContribs,
-        monthlyExpenses: monthExpenses,
-        paidApartments: paidCount,
-        totalApartments: activeApts.length,
-        unpaidCount: Math.max(0, unpaidCount),
-        paidPercent: activeApts.length > 0 ? Math.round((paidCount / activeApts.length) * 100) : 0,
-      });
-
-      const unpaidAptIds = activeApts
-        .filter(a => !monthContribsData.some(c => c.apartment_id === a.id && c.paid))
-        .map(a => a.id);
-      
-      const unpaidApts = activeApts.filter(a => unpaidAptIds.includes(a.id));
-      setUnpaidAptsList(unpaidApts.slice(0, 3));
-      
-      setAllApts(activeApts);
-      setAllContribs(contributions);
-      setAllExpenses(expenses);
-
-
-
-      // Build recent operations from contributions + expenses
-      const ops: RecentOperation[] = [];
-      contributions.filter(c => c.paid).forEach(c => {
-        ops.push({
-          id: c.id,
-          type: 'contribution',
-          label: `Contribution - App. ${(c as any).apartment_number ?? ''}`,
-          sublabel: `${MONTHS_FR[c.month - 1]} ${c.year}`,
-          amount: c.amount,
-          date: c.paid_at ?? c.updated_at ?? c.created_at,
-        });
-      });
-      expenses.forEach(e => {
-        ops.push({
-          id: e.id,
-          type: 'expense',
-          label: e.description || e.type,
-          sublabel: format(new Date(e.date), 'dd MMM yyyy', { locale: fr }),
-          amount: e.amount,
-          date: e.updated_at ?? e.created_at,
-        });
-      });
-      ops.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setRecentOps(ops.slice(0, 5));
-    } catch (e: any) {
-      console.error('[Dashboard] Load error:', e);
-      Alert.alert('Erreur Dashboard', e.message || JSON.stringify(e));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [activeResidence, currentMonth, currentYear]);
-
-  // Handle initial load and changes to activeResidence
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Handle returning to the screen
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
-
-  const onRefresh = () => { setRefreshing(true); loadData(); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
 
   const formatAmount = (amount: number) => {
     return `${amount.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} ${activeResidence?.currency ?? 'DH'}`;
   };
 
   const exportPDF = async () => {
-    try {
-      const ops: any[] = [];
-      allContribs.filter(c => c.paid).forEach(c => {
-        ops.push({
-          date: c.paid_at || c.created_at,
-          created_at: c.created_at,
-          desc: `Cotisation App. ${allApts.find(a => a.id === c.apartment_id)?.number || ''} (${MONTHS_SHORT_FR[c.month-1]} ${c.year})`,
-          sign: '+',
-          amount: c.amount
-        });
-      });
-      allExpenses.forEach(e => {
-        ops.push({
-          date: e.date,
-          created_at: e.created_at,
-          desc: e.description || e.type,
-          sign: '-',
-          amount: e.amount
-        });
-      });
-      
-      // Trier par ordre d'ajout dans la base de données
-      ops.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      
-      let currentBalance = 0;
-      ops.forEach(op => {
-        currentBalance += op.sign === '+' ? op.amount : -op.amount;
-        op.balance = currentBalance;
-      });
-
-      const renderLedgerRows = (list: any[]) => {
-        if (list.length === 0) return '<tr><td colspan="5">-</td></tr>';
-        return list.map(op => {
-          const color = op.sign === '+' ? '#388E3C' : '#D32F2F'; // Darker shades for text readability
-          return `
-          <tr style="color: ${color};">
-            <td style="border-color: #E2E8F0;">${new Date(op.date).toLocaleDateString('fr-FR')}</td>
-            <td style="text-align: left; border-color: #E2E8F0; font-weight: 500;">${op.desc}</td>
-            <td style="font-weight: bold; border-color: #E2E8F0;">${op.sign}</td>
-            <td style="font-weight: bold; border-color: #E2E8F0;">${op.amount}</td>
-            <td style="border-color: #E2E8F0;">${op.balance}</td>
-          </tr>
-          `;
-        }).join('');
-      };
-
-      const totalExp = stats?.totalExpenses ?? 0;
-      const currentBal = stats?.balance ?? 0;
-      const totalContribs = currentBal + totalExp;
-
-      const html = `
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-            <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-              h1 { text-align: center; color: #0D1B2A; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
-              
-              .summary-cards { display: flex; gap: 15px; margin-bottom: 25px; }
-              .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #E2E8F0; }
-              .card-green { background-color: rgba(76, 175, 80, 0.1); border-color: #4CAF50; color: #388E3C; }
-              .card-danger { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; color: #B91C1C; }
-              .card-navy { background-color: rgba(13, 27, 42, 0.1); border-color: #0D1B2A; color: #0D1B2A; }
-              .card-title { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-              .card-value { font-size: 16px; font-weight: bold; }
-
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; page-break-inside: auto; }
-              tr { page-break-inside: avoid; page-break-after: auto; }
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              th, td { border: 1px solid #E2E8F0; padding: 6px; text-align: center; }
-              thead th { background-color: #1B263B; color: #FFF; border-color: #1B263B; }
-              
-              /* Zebra lines for all tables */
-              tbody tr:nth-child(even) { background-color: #F8FAFC; }
-              tbody tr:nth-child(even) th { background-color: #F8FAFC; }
-              
-              tfoot th { background-color: #F1F5F9; color: #0D1B2A; font-weight: bold; }
-              
-              .ledger-container { margin-top: 30px; }
-              .ledger-title { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #0D1B2A; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
-              .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; text-align: center; }
-            </style>
-          </head>
-          <body>
-            <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - ${(activeResidence?.name || "SYNDIC DE L'IMMEUBLE").toUpperCase()}</h1>
-            
-            <div class="summary-cards">
-              <div class="card card-green">
-                <div class="card-title">Total Contributions</div>
-                <div class="card-value">${totalContribs.toLocaleString('fr-MA')} DH</div>
-              </div>
-              <div class="card card-danger">
-                <div class="card-title">Total Dépenses</div>
-                <div class="card-value">${totalExp.toLocaleString('fr-MA')} DH</div>
-              </div>
-              <div class="card card-navy">
-                <div class="card-title">Reste à la Caisse</div>
-                <div class="card-value">${currentBal.toLocaleString('fr-MA')} DH</div>
-              </div>
-            </div>
-
-            <table class="grid-table">
-              <thead>
-                <tr>
-                  <th>APPARTEMENT</th>
-                  ${Array.from({ length: 12 }, (_, i) => `<th>${MONTHS_SHORT_FR[i].toUpperCase()}</th>`).join('')}
-                  <th>TOTAL ANNUEL</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${allApts.map(apt => {
-                  const aptTotal = allContribs.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
-                  const residentName = apt.owner_name ? ` (${apt.owner_name})` : '';
-                  return `
-                  <tr>
-                    <th>${apt.number}${residentName}</th>
-                    ${Array.from({ length: 12 }, (_, i) => {
-                      const contrib = allContribs.find(c => c.apartment_id === apt.id && c.month === i + 1);
-                      if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
-                      return `<td></td>`;
-                    }).join('')}
-                    <th style="background-color: transparent;">${aptTotal > 0 ? aptTotal : ''}</th>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th style="text-align: left;">TOTAL PAR MOIS</th>
-                  ${Array.from({ length: 12 }, (_, i) => {
-                    const monthTotal = allContribs.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
-                    return `<th>${monthTotal > 0 ? monthTotal : ''}</th>`;
-                  }).join('')}
-                  <th>${allContribs.reduce((sum, c) => sum + c.amount, 0)}</th>
-                </tr>
-              </tfoot>
-            </table>
-
-            <div class="ledger-container">
-              <div class="ledger-title">Journal Chronologique des Opérations</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>DATE</th>
-                    <th>DESCRIPTION</th>
-                    <th>MOUVEMENT</th>
-                    <th>MONTANT</th>
-                    <th>SOLDE</th>
-                  </tr>
-                </thead>
-                <tbody>${renderLedgerRows(ops)}</tbody>
-              </table>
-            </div>
-
-            <div class="legend">
-              + = CRÉDIT (AUGMENTE LE SOLDE) | - = DÉBIT (DIMINUE LE SOLDE)
-            </div>
-          </body>
-        </html>
-      `;
-
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      
-      const dateStr = new Date().toISOString().split('T')[0];
-      const safeResidenceName = (activeResidence?.name || 'SYNDICOM').replace(/[^a-z0-9]/gi, '_').toUpperCase();
-      const newUri = `${FileSystem.cacheDirectory}${safeResidenceName}_${dateStr}.pdf`;
-      await FileSystem.moveAsync({ from: uri, to: newUri });
-      
-      await Sharing.shareAsync(newUri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Partager le rapport complet',
-        UTI: 'com.adobe.pdf'
-      });
-      
-    } catch (error: any) {
-      Alert.alert('Erreur', 'Impossible de générer le PDF');
-    }
+    if (!stats || !allContribs || !allApts || !allExpenses) return;
+    await generateDashboardPDF(allContribs, allApts, allExpenses, stats, activeResidence);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -341,25 +64,18 @@ export default function DashboardScreen() {
     );
   }
 
+  // Si on a pas de résidence ou de stats, afficher un état vide ou fallback
+  if (!activeResidence) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: Colors.textSecondary }}>Aucune résidence sélectionnée.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Logo width={110} height={31} />
-            <Text style={styles.headerTitle}>Accueil</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(app)/settings')}>
-            <Ionicons name="settings-outline" size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader title="Accueil" />
 
       {/* Balance Card — sticky, outside ScrollView */}
       {stats && (
@@ -486,7 +202,7 @@ export default function DashboardScreen() {
             <Text style={[styles.statAmount, { color: Colors.danger }]}>{stats?.unpaidCount ?? 0}</Text>
             
             {/* Top 3 Unpaid List */}
-            {unpaidAptsList.length > 0 && (
+            {unpaidAptsList && unpaidAptsList.length > 0 && (
               <View style={{ marginTop: 4, gap: 2 }}>
                 {unpaidAptsList.map(a => (
                   <Text key={a.id} style={{ fontSize: 10, color: Colors.textSecondary }} numberOfLines={1}>
@@ -511,13 +227,13 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
 
-          {recentOps.length === 0 ? (
+          {recentOps && recentOps.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="receipt-outline" size={36} color={Colors.textSecondary} />
               <Text style={styles.emptyText}>Aucune opération récente</Text>
             </View>
           ) : (
-            recentOps.map(op => (
+            recentOps?.map(op => (
               <View key={op.id} style={styles.opRow}>
                 <View style={[styles.opIcon, { backgroundColor: op.type === 'contribution' ? Colors.successLight : Colors.dangerLight }]}>
                   <Ionicons
@@ -550,35 +266,6 @@ export default function DashboardScreen() {
 const createStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 56,
-    paddingBottom: Spacing.lg,
-    backgroundColor: Colors.navy,
-  },
-  headerTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  notifBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.navyCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xs, paddingBottom: 32, gap: Spacing.xl },

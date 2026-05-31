@@ -2,7 +2,7 @@
   "expo": {
     "name": "SyndiCom",
     "slug": "syndicom",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "syndicom",
@@ -16,15 +16,15 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.syndicom.app",
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "navigationBar": {
         "backgroundColor": "#0D1B2A",
         "barStyle": "light-content"
@@ -49,6 +49,14 @@
         "expo-image-picker",
         {
           "photosPermission": "SyndiCom a besoin d'accéder à vos photos pour les justificatifs de dépenses."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#0D1B2A",
+          "sounds": ["./assets/sounds/notify_1.wav"]
         }
       ]
     ],

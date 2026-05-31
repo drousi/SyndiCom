@@ -13,7 +13,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
-import { Logo } from '../../../src/components/ui/Logo';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
@@ -611,17 +611,7 @@ export default function ContributionsScreen() {
 
   return (
     <View style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}>
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Logo width={110} height={31} />
-          <Text style={styles.headerTitle}>Contributions</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-          <TouchableOpacity style={{ padding: Spacing.xs }}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader title="Contributions" />
 
       {/* Balance Card */}
       {balance !== null && totalExpenses !== null && (

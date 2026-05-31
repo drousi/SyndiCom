@@ -2,6 +2,7 @@ import 'react-native-get-random-values';
 import 'react-native-reanimated';
 import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useThemeStore } from '../src/store/theme.store';
 import { useThemeColors } from '../src/constants/theme';
@@ -13,10 +14,22 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
+import { usePushNotifications } from '../src/hooks/usePushNotifications';
+import { Platform } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes par défaut
+      retry: 2,
+    },
+  },
+});
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -34,6 +47,9 @@ export default function RootLayout() {
   const navigationState = useRootNavigationState();
   const hasNavigated = useRef(false);
   const [appIsReady, setAppIsReady] = useState(false);
+
+  // Initialisation des notifications push
+  usePushNotifications();
 
   useEffect(() => {
     async function prepare() {
@@ -53,6 +69,18 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [appIsReady, fontsLoaded]);
+
+  // Synchronisation de la barre de navigation Android avec le thème
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      try {
+        NavigationBar.setBackgroundColorAsync(Colors.navy).catch(() => {});
+        NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
+      } catch (e) {
+        // Ignorer le warning en mode edge-to-edge
+      }
+    }
+  }, [Colors.navy, isDark]);
 
   // Redirect based on auth state + role
   useEffect(() => {
@@ -109,8 +137,9 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <DialogProvider>
-      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={Colors.navy} />
+    <QueryClientProvider client={queryClient}>
+      <DialogProvider>
+        <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={Colors.navy} />
       <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: Colors.navy } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
@@ -118,6 +147,7 @@ export default function RootLayout() {
         <Stack.Screen name="(app)" />
         <Stack.Screen name="(onboarding)" />
       </Stack>
-    </DialogProvider>
+      </DialogProvider>
+    </QueryClientProvider>
   );
 }

@@ -9,7 +9,7 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { getExpensesByResidence, deleteExpense, updateExpense, getTotalExpenses } from '../../../src/db/repositories/expenses';
 import { getActiveExpenseTemplates, deleteExpenseTemplate } from '../../../src/db/repositories/expense_templates';
 import { getTotalContributions } from '../../../src/db/repositories/contributions';
-import { Logo } from '../../../src/components/ui/Logo';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Badge } from '../../../src/components/ui/Badge';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
@@ -113,18 +113,7 @@ export default function ExpensesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Logo width={110} height={31} />
-          <Text style={styles.headerTitle}>Dépenses</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader title="Dépenses" />
 
       {/* Balance Card (Identical to Contributions) */}
       {balance !== null && (

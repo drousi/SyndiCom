@@ -99,11 +99,8 @@ export async function getMonthlyExpensesTotal(
 
 export async function getTotalExpenses(residenceId: string): Promise<number> {
   const { data, error } = await supabase
-    .from('expenses')
-    .select('amount')
-    .eq('residence_id', residenceId)
-    .eq('deleted', false);
+    .rpc('get_total_expenses', { p_residence_id: residenceId });
 
   if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);
+  return Number(data) || 0;
 }

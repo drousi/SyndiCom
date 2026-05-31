@@ -8,7 +8,7 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { Input } from '../../../src/components/ui/Input';
 import { Button } from '../../../src/components/ui/Button';
-import { Logo } from '../../../src/components/ui/Logo';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { useThemeStore } from '../../../src/store/theme.store';
 import { ROLE_LABELS } from '../../../src/constants/app';
@@ -114,15 +114,7 @@ export default function SettingsScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Logo width={110} height={31} />
-          <Text style={styles.headerTitle}>Paramètres</Text>
-        </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="Paramètres" showSettings={false} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         
@@ -335,7 +327,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
     justifyContent: 'center',
   },
 
-  content: { padding: Spacing.xl, gap: Spacing.xl, paddingBottom: 48 },
+  content: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.xl, paddingBottom: 48 },
 
   section: { gap: Spacing.sm },
   sectionTitle: {

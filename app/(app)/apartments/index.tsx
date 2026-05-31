@@ -5,10 +5,11 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../../src/supabase/client';
-import { Logo } from '../../../src/components/ui/Logo';
 import { Ionicons } from '@expo/vector-icons';
+import { Logo } from '../../../src/components/ui/Logo';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { getApartmentsByResidence, deleteApartment } from '../../../src/db/repositories/apartments';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { Badge } from '../../../src/components/ui/Badge';
 import { DropdownMenu, DropdownOption } from '../../../src/components/ui/DropdownMenu';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
@@ -74,20 +75,7 @@ export default function ApartmentsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Logo width={110} height={31} />
-            <Text style={styles.headerTitle}>Appartements</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader title="Appartements" />
 
       <FlatList
         data={apartments}

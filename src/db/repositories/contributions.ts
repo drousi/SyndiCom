@@ -135,12 +135,10 @@ export async function getMonthlyContributionsTotal(
 
 export async function getTotalContributions(residenceId: string): Promise<number> {
   const { data, error } = await supabase
-    .from('contributions')
-    .select('amount')
-    .eq('residence_id', residenceId);
+    .rpc('get_total_contributions', { p_residence_id: residenceId });
 
   if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + (row.amount || 0), 0);
+  return Number(data) || 0;
 }
 
 export async function getUnpaidApartmentsForMonth(

@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../src/supabase/client';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Badge } from '../../../src/components/ui/Badge';
-import { Logo } from '../../../src/components/ui/Logo';
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { MONTHS_FR } from '../../../src/constants/app';
 import type { Apartment, Contribution, PaymentDeclaration } from '../../../src/types';
@@ -100,18 +100,7 @@ export default function MyApartmentScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Logo width={110} height={31} />
-          <Text style={styles.headerTitle}>Mon appart.</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader title="Mon appart." />
 
       <ScrollView
         contentContainerStyle={styles.content}
