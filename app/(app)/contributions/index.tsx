@@ -56,7 +56,10 @@ export default function ContributionsScreen() {
   const monthlyFee = activeResidence?.monthly_fee || 0;
 
   const loadData = useCallback(async () => {
-    if (!activeResidence) return;
+    if (!activeResidence) {
+      setLoading(false);
+      return;
+    }
     try {
       const [apts, contribs, totalContribs, totalExp, expList] = await Promise.all([
         getApartmentsByResidence(activeResidence.id),

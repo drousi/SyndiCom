@@ -150,7 +150,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           data: {
             full_name: fullName,
           },
-          emailRedirectTo: Linking.createURL('/'),
         },
       });
       if (error) throw error;

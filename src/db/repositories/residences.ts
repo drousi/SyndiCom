@@ -37,27 +37,27 @@ export async function createResidence(
 }
 
 export async function createResidenceWithAdmin(
-  data: Omit<Residence, 'id' | 'created_at' | 'updated_at'>,
+  data: Omit<Residence, 'id' | 'created_at' | 'updated_at' | 'apartment_count'>,
   userId: string
 ): Promise<Residence> {
-  const { data: newResidence, error } = await supabase
-    .from('residences')
-    .insert([data])
-    .select()
-    .single();
+  // Call the secure RPC function to bypass RLS and create both records atomically
+  const { data: newResidenceId, error } = await supabase.rpc('create_new_residence_with_admin', {
+    p_name: data.name,
+    p_address: data.address,
+    p_currency: data.currency,
+    p_monthly_fee: data.monthly_fee
+  });
 
   if (error) throw error;
 
-  const { error: linkError } = await supabase
-    .from('user_residences')
-    .insert([{
-      user_id: userId,
-      residence_id: newResidence.id,
-      role: 'admin'
-    }]);
+  // Fetch the newly created residence to return it
+  const { data: newResidence, error: fetchError } = await supabase
+    .from('residences')
+    .select('*')
+    .eq('id', newResidenceId)
+    .single();
 
-  if (linkError) throw linkError;
-
+  if (fetchError) throw fetchError;
   return newResidence;
 }
 
