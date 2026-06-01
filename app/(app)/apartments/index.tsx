@@ -176,7 +176,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: Spacing.xl,
+    bottom: Spacing.md,
     right: Spacing.xl,
     width: 56,
     height: 56,

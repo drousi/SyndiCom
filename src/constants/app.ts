@@ -2,6 +2,7 @@ export const EXPENSE_TYPES = [
   { key: 'eau', label: 'Eau', icon: 'water-outline' },
   { key: 'electricite', label: 'Électricité', icon: 'flash-outline' },
   { key: 'menage', label: 'Ménage', icon: 'brush-outline' },
+  { key: 'produits_menage', label: 'Produits Ménage', icon: 'cart-outline' },
   { key: 'gardien', label: 'Gardien', icon: 'shield-outline' },
   { key: 'reparation', label: 'Réparation', icon: 'construct-outline' },
   { key: 'ascenseur', label: 'Ascenseur', icon: 'arrow-up-outline' },

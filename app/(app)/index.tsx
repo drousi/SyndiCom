@@ -100,8 +100,14 @@ export default function DashboardScreen() {
           {/* Balances */}
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
+              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {stats.totalContributions?.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
               <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
                 {stats.totalExpenses?.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
               </Text>
             </View>
@@ -205,14 +211,12 @@ export default function DashboardScreen() {
               </View>
               <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>Apparts{'\n'}impayés</Text>
             </View>
-            <Text style={[styles.statAmount, { color: Colors.danger }]}>{stats?.unpaidCount ?? 0}</Text>
-            
             {/* Top 3 Unpaid List */}
             {unpaidAptsList && unpaidAptsList.length > 0 && (
               <View style={{ marginTop: 4, gap: 2 }}>
-                {unpaidAptsList.map(a => (
-                  <Text key={a.id} style={{ fontSize: 10, color: Colors.textSecondary }} numberOfLines={1}>
-                    • App. {a.number} {a.owner_name ? `(${a.owner_name})` : ''}
+                {unpaidAptsList.map((a: any) => (
+                  <Text key={a.id} style={{ fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1}>
+                    • App. {a.number} : {a.unpaidMonthsCount} mois impayé{a.unpaidMonthsCount > 1 ? 's' : ''}
                   </Text>
                 ))}
               </View>

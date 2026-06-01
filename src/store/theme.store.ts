@@ -33,21 +33,6 @@ export const useThemeStore = create<ThemeState>()(
       mode: 'dark', // Default to dark since the app was designed for it
       
       setMode: (mode: ThemeMode) => {
-        const customTransition = {
-          duration: 600, // Une transition de 600ms plus douce
-          create: {
-            type: LayoutAnimation.Types.easeInEaseOut,
-            property: LayoutAnimation.Properties.opacity,
-          },
-          update: {
-            type: LayoutAnimation.Types.easeInEaseOut,
-          },
-          delete: {
-            type: LayoutAnimation.Types.easeInEaseOut,
-            property: LayoutAnimation.Properties.opacity,
-          },
-        };
-        LayoutAnimation.configureNext(customTransition);
         set({ mode });
       },
       

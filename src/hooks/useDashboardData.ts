@@ -63,6 +63,7 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
 
     const stats: DashboardStats = {
       balance,
+      totalContributions: yearContribs,
       totalExpenses: yearExpenses,
       monthlyContributions: monthContribs,
       monthlyExpenses: monthExpenses,
@@ -72,11 +73,20 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
       paidPercent: activeApts.length > 0 ? Math.round((paidCount / activeApts.length) * 100) : 0,
     };
 
-    const unpaidAptIds = activeApts
-      .filter(a => !monthContribsData.some(c => c.apartment_id === a.id && c.paid))
-      .map(a => a.id);
-    
-    const unpaidAptsList = activeApts.filter(a => unpaidAptIds.includes(a.id)).slice(0, 3);
+    const aptsWithUnpaidCount = activeApts.map(apt => {
+      // Un mois est considéré payé s'il y a une contribution avec paid = true
+      const paidMonthsCount = contributions.filter(c => c.apartment_id === apt.id && c.paid).length;
+      return {
+        ...apt,
+        // Sur une année de 12 mois, les mois impayés sont ceux qui n'ont pas été payés
+        unpaidMonthsCount: 12 - paidMonthsCount
+      };
+    });
+
+    const unpaidAptsList = aptsWithUnpaidCount
+      .filter(a => a.unpaidMonthsCount > 0)
+      .sort((a, b) => b.unpaidMonthsCount - a.unpaidMonthsCount)
+      .slice(0, 3);
     
     // Build recent operations
     const ops: RecentOperation[] = [];

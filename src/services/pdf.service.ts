@@ -14,13 +14,38 @@ export async function generateDashboardPDF(
 ) {
   try {
     const ops: any[] = [];
+    const groupedContribs = new Map<string, any>();
     allContribs.filter(c => c.paid).forEach(c => {
+      const dateStr = new Date(c.paid_at || c.created_at).toISOString().split('T')[0];
+      const key = `${c.apartment_id}_${dateStr}`;
+      const monthLabel = MONTHS_SHORT_FR[c.month - 1].toUpperCase();
+
+      if (groupedContribs.has(key)) {
+        const group = groupedContribs.get(key);
+        group.amount += c.amount;
+        group.months.push(monthLabel);
+      } else {
+        groupedContribs.set(key, {
+          date: c.paid_at || c.created_at,
+          created_at: c.created_at,
+          apartment_id: c.apartment_id,
+          year: c.year,
+          amount: c.amount,
+          months: [monthLabel],
+        });
+      }
+    });
+
+    groupedContribs.forEach(group => {
+      const aptNumber = allApts.find(a => a.id === group.apartment_id)?.number || '';
+      const monthsCount = group.months.length;
+      const monthsLabel = `${monthsCount} mois`;
       ops.push({
-        date: c.paid_at || c.created_at,
-        created_at: c.created_at,
-        desc: `Cotisation App. ${allApts.find(a => a.id === c.apartment_id)?.number || ''} (${MONTHS_SHORT_FR[c.month - 1]} ${c.year})`,
+        date: group.date,
+        created_at: group.created_at,
+        desc: `Cotisation App. ${aptNumber} (${monthsLabel} ${group.year})`,
         sign: '+',
-        amount: c.amount
+        amount: group.amount
       });
     });
     allExpenses.forEach(e => {
@@ -33,8 +58,16 @@ export async function generateDashboardPDF(
       });
     });
 
-    // Trier par ordre d'ajout dans la base de données
-    ops.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    // Trier par ordre de date (sans l'heure), puis par date de création
+    ops.sort((a, b) => {
+      const dateStrA = new Date(a.date).toISOString().split('T')[0];
+      const dateStrB = new Date(b.date).toISOString().split('T')[0];
+      
+      if (dateStrA === dateStrB) {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return new Date(dateStrA).getTime() - new Date(dateStrB).getTime();
+    });
 
     let currentBalance = 0;
     ops.forEach(op => {

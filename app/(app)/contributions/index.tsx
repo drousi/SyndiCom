@@ -127,13 +127,38 @@ export default function ContributionsScreen() {
       
       // Construire le ledger (journal des opérations)
       const ops: any[] = [];
+      const groupedContribs = new Map<string, any>();
       contributions.filter(c => c.paid).forEach(c => {
+        const dateStr = new Date(c.paid_at || c.created_at).toISOString().split('T')[0];
+        const key = `${c.apartment_id}_${dateStr}`;
+        const monthLabel = MONTHS_SHORT_FR[c.month - 1].toUpperCase();
+
+        if (groupedContribs.has(key)) {
+          const group = groupedContribs.get(key);
+          group.amount += c.amount;
+          group.months.push(monthLabel);
+        } else {
+          groupedContribs.set(key, {
+            date: c.paid_at || c.created_at,
+            created_at: c.created_at,
+            apartment_id: c.apartment_id,
+            year: c.year,
+            amount: c.amount,
+            months: [monthLabel],
+          });
+        }
+      });
+
+      groupedContribs.forEach(group => {
+        const aptNumber = apartments.find(a => a.id === group.apartment_id)?.number || '';
+        const monthsCount = group.months.length;
+        const monthsLabel = `${monthsCount} mois`;
         ops.push({
-          date: c.paid_at || c.created_at,
-          created_at: c.created_at,
-          desc: `Cotisation App. ${apartments.find(a => a.id === c.apartment_id)?.number || ''} (${MONTHS_SHORT_FR[c.month-1]} ${c.year})`,
+          date: group.date,
+          created_at: group.created_at,
+          desc: `Cotisation App. ${aptNumber} (${monthsLabel} ${group.year})`,
           sign: '+',
-          amount: c.amount
+          amount: group.amount
         });
       });
       expenses.forEach(e => {
@@ -146,8 +171,16 @@ export default function ContributionsScreen() {
         });
       });
       
-      // Trier par ordre d'ajout dans la base de données
-      ops.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      // Trier par ordre de date (sans l'heure), puis par date de création
+      ops.sort((a, b) => {
+        const dateStrA = new Date(a.date).toISOString().split('T')[0];
+        const dateStrB = new Date(b.date).toISOString().split('T')[0];
+        
+        if (dateStrA === dateStrB) {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        return new Date(dateStrA).getTime() - new Date(dateStrB).getTime();
+      });
       
       // Calculer le solde courant
       let currentBalance = 0;
@@ -560,22 +593,22 @@ export default function ContributionsScreen() {
                 onPress={() => handleDoubleTap(`${apt.id}_${month}`, () => handleCellDoubleTap(apt, month, contrib))}
               >
                 {isPaid ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84 }}>
-                    <View style={{ backgroundColor: Colors.primary, paddingHorizontal: 6, height: '100%', justifyContent: 'center', borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.primary, overflow: 'hidden' }}>
+                    <View style={{ backgroundColor: Colors.primary, paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
                       <Ionicons name="checkmark" size={12} color={Colors.white} />
                     </View>
-                    <View style={{ borderWidth: 1, borderColor: Colors.primary, borderLeftWidth: 0, paddingHorizontal: 6, height: '100%', justifyContent: 'center', borderTopRightRadius: 12, borderBottomRightRadius: 12 }}>
+                    <View style={{ paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
                       <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.primary }} numberOfLines={1} adjustsFontSizeToFit>
                         {contrib.amount} <Text style={{ fontSize: 8 }}>{activeResidence?.currency || 'DH'}</Text>
                       </Text>
                     </View>
                   </View>
                 ) : isPartial ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84 }}>
-                    <View style={{ backgroundColor: Colors.warning, paddingHorizontal: 6, height: '100%', justifyContent: 'center', borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.warning, overflow: 'hidden' }}>
+                    <View style={{ backgroundColor: Colors.warning, paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
                       <Ionicons name="pie-chart" size={12} color={Colors.white} />
                     </View>
-                    <View style={{ borderWidth: 1, borderColor: Colors.warning, borderLeftWidth: 0, paddingHorizontal: 6, height: '100%', justifyContent: 'center', borderTopRightRadius: 12, borderBottomRightRadius: 12 }}>
+                    <View style={{ paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
                       <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.warning }} numberOfLines={1} adjustsFontSizeToFit>
                         {contrib.amount} <Text style={{ fontSize: 8 }}>{activeResidence?.currency || 'DH'}</Text>
                       </Text>
@@ -609,6 +642,8 @@ export default function ContributionsScreen() {
     </View>
   );
 
+  const totalContribs = (balance ?? 0) + (totalExpenses ?? 0);
+
   return (
     <View style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}>
       <ScreenHeader title="Contributions" />
@@ -630,8 +665,14 @@ export default function ContributionsScreen() {
           {/* Balances */}
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
+              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {totalContribs.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
               <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
                 {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
               </Text>
             </View>
@@ -708,8 +749,14 @@ export default function ContributionsScreen() {
           {/* Balances */}
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
+              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {totalContribs.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
               <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
                 {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
               </Text>
             </View>

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Switch
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Switch, LayoutAnimation
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,13 @@ export default function SettingsScreen() {
   
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setMode);
+
+  // Local state for smooth switch animation without lag
+  const [localIsDark, setLocalIsDark] = useState(themeMode === 'dark');
+
+  useEffect(() => {
+    setLocalIsDark(themeMode === 'dark');
+  }, [themeMode]);
 
   const canManageUsers = hasPermission('manageUsers');
   const canManageResidence = hasPermission('manageResidence');
@@ -286,13 +293,16 @@ export default function SettingsScreen() {
 
           {/* Custom Theme Switcher */}
           <View style={styles.menuItem}>
-            <Ionicons name={themeMode === 'light' ? 'sunny' : 'moon'} size={24} color={Colors.primary} />
+            <Ionicons name={localIsDark ? 'moon' : 'sunny'} size={24} color={Colors.primary} />
             <Text style={styles.menuText}>Mode Sombre</Text>
             <Switch
-              value={themeMode === 'dark'}
-              onValueChange={(val) => setThemeMode(val ? 'dark' : 'light')}
+              value={localIsDark}
+              onValueChange={(val) => {
+                setLocalIsDark(val);
+                setThemeMode(val ? 'dark' : 'light');
+              }}
               trackColor={{ false: Colors.navyBorder, true: Colors.primarySurface }}
-              thumbColor={themeMode === 'dark' ? Colors.primary : Colors.textMuted}
+              thumbColor={localIsDark ? Colors.primary : Colors.textMuted}
             />
           </View>
         </View>

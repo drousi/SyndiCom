@@ -31,6 +31,7 @@ export default function ExpensesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal] = useState(0);
+  const [totalContributions, setTotalContributions] = useState(0);
   const [balance, setBalance] = useState<number | null>(null);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
@@ -46,6 +47,7 @@ export default function ExpensesScreen() {
       setExpenses(expData);
       setTemplates(tplData);
       setTotal(totalExp);
+      setTotalContributions(totalContribs);
       setBalance(totalContribs - totalExp);
     } catch (e) {
       console.error('[Expenses] Load error:', e);
@@ -132,8 +134,14 @@ export default function ExpensesScreen() {
           {/* Balances */}
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
+              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
+              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+                {totalContributions.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
               <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
+              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
                 {total.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
               </Text>
             </View>
@@ -332,7 +340,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: Spacing.xl,
+    bottom: Spacing.md,
     right: Spacing.xl,
     width: 56,
     height: 56,
