@@ -12,6 +12,12 @@ serve(async (req) => {
 
     const record = payload.record // La nouvelle dépense (ou modifiée)
     
+    // On ne notifie pas si la dépense est supprimée
+    if (record.deleted) {
+      console.log('Expense is deleted, skipping notification.')
+      return new Response('Deleted, skipped', { status: 200 })
+    }
+
     // On ne notifie que si le statut est "paid"
     if (record.status !== 'paid') {
       console.log('Expense is not paid, skipping notification.')

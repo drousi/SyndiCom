@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { EXPENSE_TYPES } from '../../../src/constants/app';
 import { createExpenseTemplate, updateExpenseTemplate, getActiveExpenseTemplates } from '../../../src/db/repositories/expense_templates';
 import { supabase } from '../../../src/supabase/client';
 
@@ -18,6 +19,7 @@ export default function TemplateScreen() {
   const [submitting, setSubmitting] = useState(false);
   
   const [title, setTitle] = useState('');
+  const [type, setType] = useState<string>(EXPENSE_TYPES[0].key);
   const [amountType, setAmountType] = useState<'fixed' | 'variable'>('fixed');
   const [defaultAmount, setDefaultAmount] = useState('');
   const [recurrenceDay, setRecurrenceDay] = useState('1');
@@ -39,6 +41,7 @@ export default function TemplateScreen() {
       if (error) throw error;
       
       setTitle(data.title);
+      setType(data.type || EXPENSE_TYPES[0].key);
       setAmountType(data.amount_type);
       setDefaultAmount(data.default_amount.toString());
       setRecurrenceDay(data.recurrence_day.toString());
@@ -75,6 +78,7 @@ export default function TemplateScreen() {
       setSubmitting(true);
       const data = {
         title: title.trim(),
+        type: type,
         amount_type: amountType,
         default_amount: amount,
         recurrence_day: day,
@@ -127,6 +131,28 @@ export default function TemplateScreen() {
               value={title}
               onChangeText={setTitle}
             />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Catégorie</Text>
+            <View style={styles.typeGrid}>
+              {EXPENSE_TYPES.map(expenseType => (
+                <TouchableOpacity
+                  key={expenseType.key}
+                  style={[styles.typeChip, type === expenseType.key && styles.typeChipSelected]}
+                  onPress={() => setType(expenseType.key)}
+                >
+                  <Ionicons
+                    name={expenseType.icon as any}
+                    size={18}
+                    color={type === expenseType.key ? Colors.white : Colors.textSecondary}
+                  />
+                  <Text style={[styles.typeChipText, type === expenseType.key && styles.typeChipTextSelected]}>
+                    {expenseType.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           <View style={styles.formGroup}>
@@ -250,4 +276,22 @@ const createStyles = (Colors: any) => StyleSheet.create({
     marginBottom: 40,
   },
   saveBtnText: { color: Colors.white, fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    borderWidth: 1.5,
+    borderColor: Colors.navyBorder,
+    backgroundColor: Colors.navyCard,
+  },
+  typeChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  typeChipText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.medium },
+  typeChipTextSelected: { color: Colors.white },
 });

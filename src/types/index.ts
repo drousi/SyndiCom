@@ -112,6 +112,7 @@ export interface ExpenseTemplate {
   id: string;
   residence_id: string;
   title: string;
+  type: string;
   amount_type: 'fixed' | 'variable';
   default_amount: number;
   active: boolean;

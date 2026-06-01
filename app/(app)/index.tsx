@@ -41,6 +41,12 @@ export default function DashboardScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
     await refetch();

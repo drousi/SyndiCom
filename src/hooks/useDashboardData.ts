@@ -50,11 +50,20 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
       .reduce((sum, e) => sum + (e.amount || 0), 0);
 
     const unpaidCount = activeApts.length - paidCount;
-    const balance = totalContribs - totalExpenses;
+    // Calculate yearly totals
+    const yearExpenses = expenses
+      .filter(e => e.status === 'paid' && !e.deleted)
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+      
+    const yearContribs = contributions
+      .filter(c => c.paid)
+      .reduce((sum, c) => sum + (c.amount || 0), 0);
+
+    const balance = yearContribs - yearExpenses;
 
     const stats: DashboardStats = {
       balance,
-      totalExpenses,
+      totalExpenses: yearExpenses,
       monthlyContributions: monthContribs,
       monthlyExpenses: monthExpenses,
       paidApartments: paidCount,
