@@ -116,7 +116,9 @@ export interface ExpenseTemplate {
   amount_type: 'fixed' | 'variable';
   default_amount: number;
   active: boolean;
+  periodicity: 'monthly' | 'quarterly' | 'yearly';
   recurrence_day: number;
+  recurrence_month: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;

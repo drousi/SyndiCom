@@ -12,6 +12,7 @@ import { createExpense, updateExpense, getExpenseById } from '../../../src/db/re
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
+import { DatePickerInput } from '../../../src/components/ui/DatePickerInput';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 
@@ -137,15 +138,12 @@ export default function ExpenseFormScreen() {
         <Controller
           control={control}
           name="date"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
+          render={({ field: { onChange, value } }) => (
+            <DatePickerInput
               label="Date *"
-              placeholder="YYYY-MM-DD"
-              onChangeText={onChange}
-              onBlur={onBlur}
-              value={value}
+              value={new Date(value)}
+              onChange={(date) => onChange(date.toISOString().split('T')[0])}
               error={errors.date?.message}
-              leftIcon={<Ionicons name="calendar-outline" size={18} color={Colors.textMuted} />}
             />
           )}
         />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "SyndiCom",
     "slug": "syndicom",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "syndicom",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.syndicom.app",
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -25,7 +25,7 @@
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "navigationBar": {
         "backgroundColor": "#0D1B2A",
         "barStyle": "light-content"
@@ -61,7 +61,8 @@
             "./assets/sounds/notify_1.wav"
           ]
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

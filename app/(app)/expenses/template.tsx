@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { DatePickerInput } from '../../../src/components/ui/DatePickerInput';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import { createExpenseTemplate, updateExpenseTemplate, getActiveExpenseTemplates } from '../../../src/db/repositories/expense_templates';
 import { supabase } from '../../../src/supabase/client';
@@ -22,7 +23,8 @@ export default function TemplateScreen() {
   const [type, setType] = useState<string>(EXPENSE_TYPES[0].key);
   const [amountType, setAmountType] = useState<'fixed' | 'variable'>('fixed');
   const [defaultAmount, setDefaultAmount] = useState('');
-  const [recurrenceDay, setRecurrenceDay] = useState('1');
+  const [periodicity, setPeriodicity] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [firstBillingDate, setFirstBillingDate] = useState<Date>(new Date());
 
   useEffect(() => {
     if (id && id !== 'new') {
@@ -44,7 +46,11 @@ export default function TemplateScreen() {
       setType(data.type || EXPENSE_TYPES[0].key);
       setAmountType(data.amount_type);
       setDefaultAmount(data.default_amount.toString());
-      setRecurrenceDay(data.recurrence_day.toString());
+      setPeriodicity(data.periodicity || 'monthly');
+      
+      const loadMonth = data.recurrence_month ? data.recurrence_month - 1 : new Date().getMonth();
+      const loadDay = data.recurrence_day || 1;
+      setFirstBillingDate(new Date(new Date().getFullYear(), loadMonth, loadDay));
     } catch (e: any) {
       Alert.alert('Erreur', 'Impossible de charger le modèle.');
       router.back();
@@ -59,11 +65,8 @@ export default function TemplateScreen() {
       return;
     }
     
-    const day = parseInt(recurrenceDay, 10);
-    if (isNaN(day) || day < 1 || day > 28) {
-      Alert.alert('Erreur', 'Le jour de récurrence doit être entre 1 et 28.');
-      return;
-    }
+    const day = firstBillingDate.getDate();
+    const month = firstBillingDate.getMonth() + 1;
 
     let amount = 0;
     if (amountType === 'fixed') {
@@ -81,7 +84,9 @@ export default function TemplateScreen() {
         type: type,
         amount_type: amountType,
         default_amount: amount,
+        periodicity: periodicity,
         recurrence_day: day,
+        recurrence_month: periodicity === 'monthly' ? 1 : month,
       };
 
       if (id && id !== 'new') {
@@ -195,17 +200,40 @@ export default function TemplateScreen() {
           )}
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Générer le (Jour du mois)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="1"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="numeric"
-              value={recurrenceDay}
-              onChangeText={setRecurrenceDay}
-              maxLength={2}
+            <Text style={styles.label}>Périodicité</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity 
+                style={[styles.typeBtn, periodicity === 'monthly' && styles.typeBtnActive]}
+                onPress={() => setPeriodicity('monthly')}
+              >
+                <Text style={[styles.typeBtnText, periodicity === 'monthly' && { color: Colors.white }]}>Mensuel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.typeBtn, periodicity === 'quarterly' && styles.typeBtnActive]}
+                onPress={() => setPeriodicity('quarterly')}
+              >
+                <Text style={[styles.typeBtnText, periodicity === 'quarterly' && { color: Colors.white }]}>Trimestriel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.typeBtn, periodicity === 'yearly' && styles.typeBtnActive]}
+                onPress={() => setPeriodicity('yearly')}
+              >
+                <Text style={[styles.typeBtnText, periodicity === 'yearly' && { color: Colors.white }]}>Annuel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <DatePickerInput
+              label={periodicity === 'monthly' ? "Date de facturation *" : "Première date de facturation *"}
+              value={firstBillingDate}
+              onChange={setFirstBillingDate}
             />
-            <Text style={styles.helpText}>Généralement le 1er du mois.</Text>
+            <Text style={styles.helpText}>
+              {periodicity === 'monthly' 
+                ? 'Seul le jour (ex: le 1er du mois) sera pris en compte pour la récurrence.' 
+                : 'Le jour et le mois de cette date seront utilisés pour générer les prochaines factures automatiquement.'}
+            </Text>
           </View>
 
           <TouchableOpacity 
