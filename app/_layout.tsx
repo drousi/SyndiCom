@@ -15,6 +15,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
+// import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
@@ -76,11 +77,8 @@ export default function RootLayout() {
     if (Platform.OS === 'android') {
       const setNavBarColor = () => {
         try {
-          NavigationBar.setBackgroundColorAsync(Colors.navy).catch(() => {});
-          NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
-        } catch (e) {
-          // Ignorer le warning en mode edge-to-edge
-        }
+          // SystemUI.setBackgroundColorAsync(Colors.navy).catch(() => {});
+        } catch (e) {}
       };
 
       setNavBarColor();

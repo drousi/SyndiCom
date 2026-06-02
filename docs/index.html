@@ -258,7 +258,7 @@
 
         // Initialize Supabase Client
         // It will automatically parse the hash (#access_token=...&type=recovery) and establish a session
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.addEventListener('DOMContentLoaded', async () => {
             const hash = window.location.hash.substring(1);
@@ -296,7 +296,7 @@
 
                     try {
                         // Update the user's password using the established session
-                        const { data, error } = await supabase.auth.updateUser({
+                        const { data, error } = await supabaseClient.auth.updateUser({
                             password: password
                         });
 
