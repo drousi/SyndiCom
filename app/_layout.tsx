@@ -18,8 +18,9 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
-import { Platform } from 'react-native';
+import { Platform, Keyboard, LogBox, View } from 'react-native';
 
+LogBox.ignoreLogs(['setBackgroundColorAsync is not supported']);
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
@@ -73,12 +74,20 @@ export default function RootLayout() {
   // Synchronisation de la barre de navigation Android avec le thème
   useEffect(() => {
     if (Platform.OS === 'android') {
-      try {
-        NavigationBar.setBackgroundColorAsync(Colors.navy).catch(() => {});
-        NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
-      } catch (e) {
-        // Ignorer le warning en mode edge-to-edge
-      }
+      const setNavBarColor = () => {
+        try {
+          NavigationBar.setBackgroundColorAsync(Colors.navy).catch(() => {});
+          NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
+        } catch (e) {
+          // Ignorer le warning en mode edge-to-edge
+        }
+      };
+
+      setNavBarColor();
+
+      // Forcer la réapplication quand le clavier se ferme (fix bug Android)
+      const hideSubscription = Keyboard.addListener('keyboardDidHide', setNavBarColor);
+      return () => hideSubscription.remove();
     }
   }, [Colors.navy, isDark]);
 
@@ -140,13 +149,15 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <DialogProvider>
         <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={Colors.navy} />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: Colors.navy } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(superuser)" />
-        <Stack.Screen name="(app)" />
-        <Stack.Screen name="(onboarding)" />
-      </Stack>
+        <View style={{ flex: 1, backgroundColor: Colors.navy }}>
+          <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: Colors.navy } }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(superuser)" />
+            <Stack.Screen name="(app)" />
+            <Stack.Screen name="(onboarding)" />
+          </Stack>
+        </View>
       </DialogProvider>
     </QueryClientProvider>
   );

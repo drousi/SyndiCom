@@ -155,7 +155,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   title: {
     fontSize: FontSize.xxl,
     fontWeight: FontWeight.bold,
-    color: Colors.white,
+    color: Colors.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
@@ -196,7 +196,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   successTitle: {
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
   successText: {
     fontSize: FontSize.sm,

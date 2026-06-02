@@ -107,6 +107,38 @@
             border-color: var(--primary);
         }
 
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            padding-right: 48px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toggle-password:hover {
+            color: var(--text-main);
+        }
+
+        .toggle-password svg {
+            width: 20px;
+            height: 20px;
+        }
+
         .button {
             display: inline-block;
             width: 100%;
@@ -169,11 +201,27 @@
         <form id="reset-form">
             <div class="input-group">
                 <label for="password">Mot de passe</label>
-                <input type="password" id="password" required placeholder="••••••••" minlength="6">
+                <div class="input-wrapper">
+                    <input type="password" id="password" required placeholder="••••••••" minlength="6">
+                    <button type="button" class="toggle-password" onclick="togglePassword('password', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="input-group">
                 <label for="confirm-password">Confirmer le mot de passe</label>
-                <input type="password" id="confirm-password" required placeholder="••••••••" minlength="6">
+                <div class="input-wrapper">
+                    <input type="password" id="confirm-password" required placeholder="••••••••" minlength="6">
+                    <button type="button" class="toggle-password" onclick="togglePassword('confirm-password', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div id="error-message" class="error-message"></div>
             <button type="submit" id="submit-btn" class="button">Enregistrer</button>
@@ -191,18 +239,34 @@
         <p>Votre mot de passe a été mis à jour avec succès. Vous pouvez maintenant fermer cette page et retourner sur l'application mobile pour vous connecter.</p>
     </div>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>`;
+            } else {
+                input.type = 'password';
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
+            }
+        }
+
         const SUPABASE_URL = 'https://mrbalhwgrlvjhvjpujfb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_udJ9cwPx-J-omo5v9_egdw_UNpvGm3T';
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Supabase Client
+        // It will automatically parse the hash (#access_token=...&type=recovery) and establish a session
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        document.addEventListener('DOMContentLoaded', async () => {
             const hash = window.location.hash.substring(1);
             const params = new URLSearchParams(hash);
             
             const type = params.get('type');
-            const accessToken = params.get('access_token');
 
-            if (type === 'recovery' && accessToken) {
+            if (type === 'recovery') {
                 // Show recovery form
                 document.getElementById('recovery-container').style.display = 'block';
                 
@@ -220,33 +284,31 @@
                         errorMsg.style.display = 'block';
                         return;
                     }
+                    if (password.length < 6) {
+                        errorMsg.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
 
                     errorMsg.style.display = 'none';
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Chargement...';
 
                     try {
-                        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-                            method: 'PUT',
-                            headers: {
-                                'apikey': SUPABASE_ANON_KEY,
-                                'Authorization': `Bearer ${accessToken}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ password: password })
+                        // Update the user's password using the established session
+                        const { data, error } = await supabase.auth.updateUser({
+                            password: password
                         });
 
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(data.msg || data.message || 'Erreur lors de la mise à jour.');
+                        if (error) {
+                            throw error;
                         }
 
                         // Success
                         document.getElementById('recovery-container').style.display = 'none';
                         document.getElementById('success-container').style.display = 'block';
                     } catch (error) {
-                        errorMsg.textContent = error.message;
+                        errorMsg.textContent = error.message || 'Erreur lors de la mise à jour.';
                         errorMsg.style.display = 'block';
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Enregistrer';
