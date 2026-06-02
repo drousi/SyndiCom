@@ -16,12 +16,14 @@ import { resetPasswordSchema, ResetPasswordFormData } from '../../src/schemas';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 
 export default function ResetPasswordScreen() {
   const [sent, setSent] = useState(false);
   const router = useRouter();
   const { resetPassword, isLoading, error, clearError } = useAuthStore();
+  const Colors = useThemeColors();
+  const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
   const { control, handleSubmit, formState: { errors }, getValues } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -120,7 +122,7 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   content: {
     flexGrow: 1,

@@ -17,8 +17,9 @@ import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
-import { getContributionsByResidence, createContribution, updateContribution, getTotalContributions } from '../../../src/db/repositories/contributions';
-import { getTotalExpenses, getExpensesByResidence } from '../../../src/db/repositories/expenses';
+import { getContributionsByResidence, createContribution, updateContribution } from '../../../src/db/repositories/contributions';
+import { getExpensesByResidence } from '../../../src/db/repositories/expenses';
+import { BalanceCard } from '../../../src/components/ui/BalanceCard';
 import { Button } from '../../../src/components/ui/Button';
 import { SelectInput } from '../../../src/components/ui/SelectInput';
 import { DatePickerModal } from '../../../src/components/ui/DatePickerModal';
@@ -61,18 +62,20 @@ export default function ContributionsScreen() {
       return;
     }
     try {
-      const [apts, contribs, totalContribs, totalExp, expList] = await Promise.all([
+      const [apts, contribs, expList] = await Promise.all([
         getApartmentsByResidence(activeResidence.id),
         getContributionsByResidence(activeResidence.id, currentYear),
-        getTotalContributions(activeResidence.id),
-        getTotalExpenses(activeResidence.id),
         getExpensesByResidence(activeResidence.id, currentYear)
       ]);
+      
+      const yearTotalExp = expList.filter(e => e.status === 'paid' && !e.deleted).reduce((sum, e) => sum + (e.amount || 0), 0);
+      const yearTotalContribs = contribs.filter(c => c.paid).reduce((sum, c) => sum + (c.amount || 0), 0);
+      
       setApartments(apts.filter(a => a.active));
       setContributions(contribs);
       setExpenses(expList);
-      setBalance(totalContribs - totalExp);
-      setTotalExpenses(totalExp);
+      setBalance(yearTotalContribs - yearTotalExp);
+      setTotalExpenses(yearTotalExp);
     } catch (e) {
       console.error('[Contributions] Load error:', e);
     } finally {
@@ -650,40 +653,14 @@ export default function ContributionsScreen() {
 
       {/* Balance Card */}
       {balance !== null && totalExpenses !== null && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.xl, marginBottom: Spacing.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
-          {/* Year Selector */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y - 1)}>
-              <Ionicons name="chevron-back" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginHorizontal: 2 }}>{currentYear}</Text>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y + 1)}>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Balances */}
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
-              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {totalContribs.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
-              <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {balance.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <BalanceCard
+          currentYear={currentYear}
+          setCurrentYear={setCurrentYear}
+          totalContributions={balance + totalExpenses}
+          totalExpenses={totalExpenses}
+          balance={balance}
+          currency={activeResidence?.currency ?? 'DH'}
+        />
       )}
 
       <View style={{ flex: 1, paddingBottom: 120 }}>
@@ -741,33 +718,16 @@ export default function ContributionsScreen() {
               </View>
 
               {balance !== null && totalExpenses !== null && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.xl, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
-            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary }}>Année {currentYear}</Text>
-          </View>
-          
-          {/* Balances */}
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
-              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {totalContribs.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {totalExpenses.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
-              <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {balance.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-          </View>
-        </View>
+                <View style={{ marginBottom: Spacing.xl }}>
+                  <BalanceCard
+                    currentYear={currentYear}
+                    setCurrentYear={setCurrentYear}
+                    totalContributions={balance + totalExpenses}
+                    totalExpenses={totalExpenses}
+                    balance={balance}
+                    currency={activeResidence?.currency ?? 'DH'}
+                  />
+                </View>
               )}
 
               <View style={[styles.tableContainer, { flexDirection: 'row', borderLeftWidth: 0 }]}>

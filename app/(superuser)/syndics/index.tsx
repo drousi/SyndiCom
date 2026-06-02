@@ -9,6 +9,7 @@ import { supabase } from '../../../src/supabase/client';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { Logo } from '../../../src/components/ui/Logo';
+import { EmptyState } from '../../../src/components/ui/EmptyState';
 import type { Residence } from '../../../src/types';
 
 interface SyndicItem {
@@ -124,11 +125,11 @@ export default function SuperuserDashboard() {
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="business-outline" size={48} color={Colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Aucun syndic</Text>
-            <Text style={styles.emptyText}>Créez votre premier syndic avec le bouton +</Text>
-          </View>
+          <EmptyState
+            icon="business-outline"
+            title="Aucun syndic"
+            description="Créez votre premier syndic avec le bouton +"
+          />
         }
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -266,8 +267,4 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: Spacing.md,
   },
-
-  emptyState: { alignItems: 'center', gap: Spacing.md, padding: Spacing.huge },
-  emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
 });

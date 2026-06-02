@@ -6,10 +6,13 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/store/auth.store';
-import { getExpensesByResidence, deleteExpense, updateExpense, getTotalExpenses } from '../../../src/db/repositories/expenses';
+import { getExpensesByResidence, deleteExpense, updateExpense } from '../../../src/db/repositories/expenses';
 import { getActiveExpenseTemplates, deleteExpenseTemplate } from '../../../src/db/repositories/expense_templates';
-import { getTotalContributions } from '../../../src/db/repositories/contributions';
+import { getContributionsByResidence } from '../../../src/db/repositories/contributions';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
+import { BalanceCard } from '../../../src/components/ui/BalanceCard';
+import { EmptyState } from '../../../src/components/ui/EmptyState';
+import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
@@ -38,17 +41,20 @@ export default function ExpensesScreen() {
   const loadData = useCallback(async () => {
     if (!activeResidence) { setLoading(false); return; }
     try {
-      const [expData, tplData, totalContribs, totalExp] = await Promise.all([
+      const [expData, tplData, contribsData] = await Promise.all([
         getExpensesByResidence(activeResidence.id, currentYear),
         getActiveExpenseTemplates(activeResidence.id),
-        getTotalContributions(activeResidence.id),
-        getTotalExpenses(activeResidence.id)
+        getContributionsByResidence(activeResidence.id, currentYear)
       ]);
+      
+      const yearTotalExp = expData.filter(e => e.status === 'paid' && !e.deleted).reduce((sum, e) => sum + (e.amount || 0), 0);
+      const yearTotalContribs = contribsData.filter(c => c.paid).reduce((sum, c) => sum + (c.amount || 0), 0);
+
       setExpenses(expData);
       setTemplates(tplData);
-      setTotal(totalExp);
-      setTotalContributions(totalContribs);
-      setBalance(totalContribs - totalExp);
+      setTotal(yearTotalExp);
+      setTotalContributions(yearTotalContribs);
+      setBalance(yearTotalContribs - yearTotalExp);
     } catch (e) {
       console.error('[Expenses] Load error:', e);
     } finally {
@@ -117,42 +123,16 @@ export default function ExpensesScreen() {
     <View style={styles.container}>
       <ScreenHeader title="Dépenses" />
 
-      {/* Balance Card (Identical to Contributions) */}
+      {/* Balance Card */}
       {balance !== null && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.xl, marginBottom: Spacing.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
-          {/* Year Selector */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y - 1)}>
-              <Ionicons name="chevron-back" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginHorizontal: 2 }}>{currentYear}</Text>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y + 1)}>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Balances */}
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
-              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {totalContributions.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {total.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
-              <Text style={{ color: balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {balance.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <BalanceCard
+          currentYear={currentYear}
+          setCurrentYear={setCurrentYear}
+          totalContributions={totalContributions}
+          totalExpenses={total}
+          balance={balance}
+          currency={activeResidence?.currency ?? 'DH'}
+        />
       )}
 
       {/* Tabs */}
@@ -181,11 +161,11 @@ export default function ExpensesScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={48} color={Colors.textSecondary} />
-                <Text style={styles.emptyTitle}>Aucune dépense</Text>
-                <Text style={styles.emptyText}>Les dépenses enregistrées apparaîtront ici.</Text>
-              </View>
+              <EmptyState
+                icon="receipt-outline"
+                title="Aucune dépense"
+                description="Les dépenses enregistrées apparaîtront ici."
+              />
             }
             renderItem={({ item: expense }) => (
               <View style={[
@@ -258,11 +238,11 @@ export default function ExpensesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
-              <Text style={styles.emptyTitle}>Aucun modèle</Text>
-              <Text style={styles.emptyText}>Créez des modèles pour générer automatiquement vos factures récurrentes chaque mois.</Text>
-            </View>
+            <EmptyState
+              icon="calendar-outline"
+              title="Aucun modèle"
+              description="Créez des modèles pour générer automatiquement vos factures récurrentes chaque mois."
+            />
           }
           renderItem={({ item: template }) => (
             <View style={styles.expenseCard}>
@@ -305,12 +285,7 @@ export default function ExpensesScreen() {
       )}
 
       {canWrite && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push(activeTab === 'expenses' ? '/(app)/expenses/new' : '/(app)/expenses/template?id=new')}
-        >
-          <Ionicons name="add" size={28} color={Colors.white} />
-        </TouchableOpacity>
+        <FAB onPress={() => router.push(activeTab === 'expenses' ? '/(app)/expenses/new' : '/(app)/expenses/template?id=new')} />
       )}
     </View>
   );
@@ -338,19 +313,6 @@ const createStyles = (Colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fab: {
-    position: 'absolute',
-    bottom: Spacing.md,
-    right: Spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.green,
-  },
-
   tabsContainer: {
     flexDirection: 'row',
     marginHorizontal: Spacing.xl,
@@ -416,8 +378,4 @@ const createStyles = (Colors: any) => StyleSheet.create({
     borderRadius: Radius.sm,
   },
   actionBtnText: { color: Colors.white, fontSize: 10, fontWeight: 'bold' },
-
-  emptyState: { alignItems: 'center', gap: Spacing.md, padding: Spacing.huge },
-  emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
 });

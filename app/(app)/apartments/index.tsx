@@ -10,6 +10,8 @@ import { Logo } from '../../../src/components/ui/Logo';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { getApartmentsByResidence, deleteApartment } from '../../../src/db/repositories/apartments';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
+import { EmptyState } from '../../../src/components/ui/EmptyState';
+import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
 import { DropdownMenu, DropdownOption } from '../../../src/components/ui/DropdownMenu';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
@@ -84,17 +86,18 @@ export default function ApartmentsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="business-outline" size={48} color={Colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Aucun appartement</Text>
-            <Text style={styles.emptyText}>Commencez par ajouter les appartements de votre résidence.</Text>
+          <EmptyState
+            icon="business-outline"
+            title="Aucun appartement"
+            description="Commencez par ajouter les appartements de votre résidence."
+          >
             {canWrite && (
               <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(app)/apartments/new')}>
                 <Ionicons name="add" size={16} color={Colors.white} />
                 <Text style={styles.emptyBtnText}>Ajouter un appartement</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </EmptyState>
         }
         renderItem={({ item: apt }) => {
           const menuOptions: DropdownOption[] = [];
@@ -141,12 +144,7 @@ export default function ApartmentsScreen() {
       />
 
       {canWrite && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push('/(app)/apartments/new')}
-        >
-          <Ionicons name="add" size={28} color={Colors.white} />
-        </TouchableOpacity>
+        <FAB onPress={() => router.push('/(app)/apartments/new')} />
       )}
     </View>
   );
@@ -174,18 +172,6 @@ const createStyles = (Colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fab: {
-    position: 'absolute',
-    bottom: Spacing.md,
-    right: Spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.green,
-  },
 
   list: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: 32 },
   aptCard: {
@@ -212,9 +198,6 @@ const createStyles = (Colors: any) => StyleSheet.create({
   aptDetail: { fontSize: FontSize.xs, color: Colors.textSecondary },
   aptRight: { alignItems: 'flex-end', gap: Spacing.sm },
 
-  emptyState: { alignItems: 'center', gap: Spacing.md, padding: Spacing.huge },
-  emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',

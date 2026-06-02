@@ -10,6 +10,7 @@ import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../src/cons
 import { ROLE_LABELS } from '../../../src/constants/app';
 import type { UserResidenceWithProfile, Residence } from '../../../src/types';
 import { ActionSheet, ActionSheetOption } from '../../../src/components/ui/ActionSheet';
+import { EmptyState } from '../../../src/components/ui/EmptyState';
 
 export default function SyndicDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -162,9 +163,11 @@ export default function SyndicDetailsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Aucun utilisateur dans ce syndic</Text>
-          </View>
+          <EmptyState
+            icon="people-outline"
+            title="Aucun utilisateur"
+            description="Aucun utilisateur dans ce syndic"
+          />
         }
         renderItem={({ item }) => (
           <View style={styles.userCard}>
@@ -269,7 +272,4 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   roleBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.primary },
-
-  emptyState: { alignItems: 'center', padding: Spacing.xl },
-  emptyText: { color: Colors.textSecondary },
 });

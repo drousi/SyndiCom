@@ -13,6 +13,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
+import { BalanceCard } from '../../src/components/ui/BalanceCard';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../src/constants/theme';
 import { useDashboardData } from '../../src/hooks/useDashboardData';
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../src/constants/app';
@@ -85,40 +87,14 @@ export default function DashboardScreen() {
 
       {/* Balance Card — sticky, outside ScrollView */}
       {stats && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.xl, marginBottom: Spacing.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, backgroundColor: Colors.navyCard, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
-          {/* Year Selector */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm, marginRight: Spacing.sm }}>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y - 1)}>
-              <Ionicons name="chevron-back" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginHorizontal: 2 }}>{currentYear}</Text>
-            <TouchableOpacity style={{ padding: 4 }} onPress={() => setCurrentYear(y => y + 1)}>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Balances */}
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingRight: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Contributions</Text>
-              <Text style={{ color: Colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {stats.totalContributions?.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, paddingHorizontal: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Total Dépenses</Text>
-              <Text style={{ color: Colors.danger, fontSize: FontSize.xs, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {stats.totalExpenses?.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: Spacing.sm }}>
-              <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: FontWeight.semibold }}>Solde</Text>
-              <Text style={{ color: stats.balance >= 0 ? Colors.primary : Colors.danger, fontSize: FontSize.sm, fontWeight: FontWeight.bold }} numberOfLines={1}>
-                {stats.balance?.toLocaleString('fr-MA', { minimumFractionDigits: 0 })} {activeResidence?.currency ?? 'DH'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <BalanceCard
+          currentYear={currentYear}
+          setCurrentYear={setCurrentYear}
+          totalContributions={stats.totalContributions}
+          totalExpenses={stats.totalExpenses}
+          balance={stats.balance}
+          currency={activeResidence?.currency ?? 'DH'}
+        />
       )}
 
       {/* Bouton PDF Rapide */}
@@ -238,10 +214,11 @@ export default function DashboardScreen() {
           </View>
 
           {recentOps && recentOps.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={36} color={Colors.textSecondary} />
-              <Text style={styles.emptyText}>Aucune opération récente</Text>
-            </View>
+            <EmptyState
+              icon="receipt-outline"
+              title="Aucune opération"
+              description="Aucune opération récente"
+            />
           ) : (
             recentOps?.map(op => (
               <View key={op.id} style={styles.opRow}>
@@ -428,17 +405,6 @@ const createStyles = (Colors: any) => StyleSheet.create({
   },
   opDate: {
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-  },
-  emptyState: {
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.xxl,
-    backgroundColor: Colors.navyCard,
-    borderRadius: Radius.lg,
-  },
-  emptyText: {
-    fontSize: FontSize.sm,
     color: Colors.textSecondary,
   },
 });
