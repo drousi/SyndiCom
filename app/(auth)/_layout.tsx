@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useThemeColors } from '../../src/constants/theme';
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading, profile } = useAuthStore();
   const router = useRouter();
+  const Colors = useThemeColors();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -19,7 +21,7 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#0D1B2A' },
+        contentStyle: { backgroundColor: Colors.navy },
       }}
     >
       <Stack.Screen name="login" />

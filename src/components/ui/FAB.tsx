@@ -17,7 +17,7 @@ export function FAB({ onPress, icon = 'add' }: FABProps) {
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <Ionicons name={icon} size={28} color={Colors.white} />
+      <Ionicons name={icon} size={24} color={Colors.white} />
     </TouchableOpacity>
   );
 }
@@ -27,9 +27,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Spacing.md,
     right: Spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadow.green,

@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import Svg, { Path, G } from 'react-native-svg';
-import { Colors, FontWeight } from '../src/constants/theme';
+import { useThemeColors, FontWeight } from '../src/constants/theme';
 
 export default function Index() {
+  const Colors = useThemeColors();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const dotAnim1 = useRef(new Animated.Value(0.3)).current;
@@ -83,13 +84,13 @@ export default function Index() {
 
         {/* App name — same two-tone style as ScreenHeader */}
         <Text style={{ fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -1 }}>
-          <Text style={{ color: '#FFFFFF' }}>Syndi</Text>
+          <Text style={{ color: Colors.textPrimary }}>Syndi</Text>
           <Text style={{ color: '#81ae45' }}>Com</Text>
         </Text>
 
         {/* Subtle tagline */}
         <Text style={{
-          color: '#64748B',
+          color: Colors.textSecondary,
           fontSize: 13,
           fontWeight: FontWeight.medium,
           letterSpacing: 0.5,

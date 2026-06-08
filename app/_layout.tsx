@@ -15,6 +15,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
@@ -48,6 +49,14 @@ export default function RootLayout() {
   const navigationState = useRootNavigationState();
   const hasNavigated = useRef(false);
   const [appIsReady, setAppIsReady] = useState(false);
+  const [minSplashTimeElapsed, setMinSplashTimeElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinSplashTimeElapsed(true);
+    }, 2000); // 2 seconds of minimum splash screen
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initialisation des notifications push
   usePushNotifications();
@@ -78,6 +87,7 @@ export default function RootLayout() {
         try {
           await NavigationBar.setBackgroundColorAsync(Colors.navy);
           await NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
+          await SystemUI.setBackgroundColorAsync(Colors.navy);
         } catch (e) {}
       };
 
@@ -90,6 +100,7 @@ export default function RootLayout() {
           const navyColor = isDarkTheme ? '#0D1B2A' : '#F8FAFC';
           NavigationBar.setBackgroundColorAsync(navyColor).catch(() => {});
           NavigationBar.setButtonStyleAsync(isDarkTheme ? 'light' : 'dark').catch(() => {});
+          SystemUI.setBackgroundColorAsync(navyColor).catch(() => {});
         };
         setTimeout(applyFix, 50);
         setTimeout(applyFix, 250);
@@ -100,7 +111,7 @@ export default function RootLayout() {
 
   // Redirect based on auth state + role
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !minSplashTimeElapsed) return;
     // Wait until navigation is ready
     if (!navigationState?.key) return;
 
@@ -148,7 +159,7 @@ export default function RootLayout() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isLoading, systemRole, profile?.force_password_change, navigationState?.key, residences.length]);
+  }, [isAuthenticated, isLoading, minSplashTimeElapsed, systemRole, profile?.force_password_change, navigationState?.key, residences.length]);
 
   if (!fontsLoaded) return null;
 

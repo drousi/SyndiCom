@@ -17,11 +17,16 @@ export function ScreenHeader({ title, showSettings = true }: ScreenHeaderProps) 
 
   return (
     <View style={styles.header}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Logo width={110} height={31} />
-        <Text style={styles.headerTitle}>{title}</Text>
+      {/* Left Logo */}
+      <View style={{ width: 80, justifyContent: 'center' }}>
+        <Logo width={80} height={22} />
       </View>
-      <View style={styles.headerRight}>
+
+      {/* Center Title */}
+      <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>{title}</Text>
+
+      {/* Right Icons */}
+      <View style={[styles.headerRight, { width: 80, justifyContent: 'flex-end' }]}>
         <TouchableOpacity style={styles.notifBtn}>
           <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>

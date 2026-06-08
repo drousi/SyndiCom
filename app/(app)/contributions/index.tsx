@@ -30,8 +30,15 @@ export default function ContributionsScreen() {
 
   const {
     apartments, contributions, expenses, balance, totalExpenses,
-    isLoading, isRefetching, refetch
+    isLoading, refetch
   } = useContributionsData(activeResidence?.id, currentYear);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -398,14 +405,17 @@ export default function ContributionsScreen() {
   const totalContribs = (balance ?? 0) + (totalExpenses ?? 0);
 
   return (
-    <ScrollView 
-      style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}
-      contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
-      }
-    >
-      <ScreenHeader title="Contributions" />
+    <View style={styles.container}>
+      <ScrollView 
+        style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+        alwaysBounceVertical={false}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+        }
+      >
+        <ScreenHeader title="Contributions" />
 
       {/* Balance Card */}
       {balance !== null && totalExpenses !== null && (
@@ -520,6 +530,8 @@ export default function ContributionsScreen() {
         </View>
       )}
 
+      </ScrollView>
+
       {/* FAB */}
       {canManage && (
         <>
@@ -533,25 +545,25 @@ export default function ContributionsScreen() {
 
           <Animated.View style={[styles.fabAction, action3Style, { bottom: Spacing.md }]} pointerEvents={isMenuOpen ? "auto" : "none"}>
             <TouchableOpacity style={[styles.fabSubButton, { elevation: 8 }]} onPress={() => { closeMenu(); exportPDF(); }}>
-              <Ionicons name="document-text-outline" size={24} color={Colors.white} />
+              <Ionicons name="document-text-outline" size={20} color={Colors.white} />
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View style={[styles.fabAction, action2Style, { bottom: Spacing.md }]} pointerEvents={isMenuOpen ? "auto" : "none"}>
             <TouchableOpacity style={[styles.fabSubButton, { elevation: 8 }]} onPress={() => { closeMenu(); shareMatrix(); }}>
-              <Ionicons name="logo-whatsapp" size={24} color={Colors.white} />
+              <Ionicons name="logo-whatsapp" size={20} color={Colors.white} />
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View style={[styles.fabAction, action1Style, { bottom: Spacing.md }]} pointerEvents={isMenuOpen ? "auto" : "none"}>
             <TouchableOpacity style={[styles.fabSubButton, { elevation: 8 }]} onPress={() => { closeMenu(); openPaymentDialog(); }}>
-              <Ionicons name="wallet-outline" size={24} color={Colors.white} />
+              <Ionicons name="wallet-outline" size={20} color={Colors.white} />
             </TouchableOpacity>
           </Animated.View>
 
           <TouchableOpacity style={[styles.fab, { zIndex: 100, elevation: 12 }]} onPress={toggleMenu} activeOpacity={0.8}>
             <Animated.View style={fabStyle}>
-              <Ionicons name="add" size={28} color={Colors.white} />
+              <Ionicons name="add" size={24} color={Colors.white} />
             </Animated.View>
           </TouchableOpacity>
         </>
@@ -570,9 +582,7 @@ export default function ContributionsScreen() {
         monthlyFee={monthlyFee}
         preselectedAptId={selectedAptId}
       />
-
-
-    </ScrollView>
+    </View>
   );
 }
 
@@ -629,14 +639,14 @@ function createStyles(Colors: any) {
     zIndex: 95,
   },
   fabSubButton: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     ...Shadow.green,
   },
   fab: {
     position: 'absolute', bottom: Spacing.md, right: Spacing.xl,
-    width: 56, height: 56, borderRadius: 28,
+    width: 48, height: 48, borderRadius: 24,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     zIndex: 100,
