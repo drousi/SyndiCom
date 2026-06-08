@@ -107,20 +107,22 @@ export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePick
                   return (
                     <TouchableOpacity 
                       key={day} 
-                      style={[
-                        styles.dayCell, 
-                        isSelected && styles.dayCellSelected,
-                        !isSelected && isToday && styles.dayCellToday
-                      ]}
+                      style={styles.dayCell}
                       onPress={() => handleSelectDay(day)}
                     >
-                      <Text style={[
-                        styles.dayText,
-                        isSelected && styles.dayTextSelected,
-                        !isSelected && isToday && styles.dayTextToday
+                      <View style={[
+                        styles.dayCircle,
+                        isSelected && styles.dayCircleSelected,
+                        !isSelected && isToday && styles.dayCircleToday
                       ]}>
-                        {day}
-                      </Text>
+                        <Text style={[
+                          styles.dayText,
+                          isSelected && styles.dayTextSelected,
+                          !isSelected && isToday && styles.dayTextToday
+                        ]}>
+                          {day}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -164,12 +166,23 @@ const createStyles = (Colors: any) => StyleSheet.create({
   dayCell: {
     width: '14.28%', aspectRatio: 1,
     justifyContent: 'center', alignItems: 'center',
-    borderRadius: Radius.full,
   },
-  dayCellSelected: { backgroundColor: Colors.primary },
-  dayCellToday: { backgroundColor: Colors.navyBorder },
+  dayCircle: {
+    width: 36, height: 36,
+    borderRadius: Radius.full,
+    justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
+  },
+  dayCircleSelected: { backgroundColor: Colors.primary },
+  dayCircleToday: { backgroundColor: Colors.navyBorder },
   
-  dayText: { fontSize: FontSize.md, color: Colors.textPrimary },
+  dayText: { 
+    fontSize: FontSize.md, 
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
   dayTextSelected: { color: Colors.white, fontWeight: FontWeight.bold },
   dayTextToday: { color: Colors.primary, fontWeight: FontWeight.bold },
 

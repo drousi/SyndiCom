@@ -12,7 +12,7 @@ import { createExpense, updateExpense, getExpenseById } from '../../../src/db/re
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
-import { DatePickerInput } from '../../../src/components/ui/DatePickerInput';
+import { DateField } from '../../../src/components/ui/DateField';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 
@@ -139,9 +139,9 @@ export default function ExpenseFormScreen() {
           control={control}
           name="date"
           render={({ field: { onChange, value } }) => (
-            <DatePickerInput
+            <DateField
               label="Date *"
-              value={new Date(value)}
+              value={new Date(value + 'T12:00:00')}
               onChange={(date) => onChange(date.toISOString().split('T')[0])}
               error={errors.date?.message}
             />

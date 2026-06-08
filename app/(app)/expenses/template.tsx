@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
-import { DatePickerInput } from '../../../src/components/ui/DatePickerInput';
+import { DateField } from '../../../src/components/ui/DateField';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import { createExpenseTemplate, updateExpenseTemplate, getActiveExpenseTemplates } from '../../../src/db/repositories/expense_templates';
 import { supabase } from '../../../src/supabase/client';
@@ -224,7 +224,7 @@ export default function TemplateScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <DatePickerInput
+            <DateField
               label={periodicity === 'monthly' ? "Date de facturation *" : "Première date de facturation *"}
               value={firstBillingDate}
               onChange={setFirstBillingDate}

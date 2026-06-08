@@ -15,7 +15,6 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
-// import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
@@ -75,16 +74,26 @@ export default function RootLayout() {
   // Synchronisation de la barre de navigation Android avec le thème
   useEffect(() => {
     if (Platform.OS === 'android') {
-      const setNavBarColor = () => {
+      const setNavBarColor = async () => {
         try {
-          // SystemUI.setBackgroundColorAsync(Colors.navy).catch(() => {});
+          await NavigationBar.setBackgroundColorAsync(Colors.navy);
+          await NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
         } catch (e) {}
       };
 
       setNavBarColor();
 
       // Forcer la réapplication quand le clavier se ferme (fix bug Android)
-      const hideSubscription = Keyboard.addListener('keyboardDidHide', setNavBarColor);
+      const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+        const applyFix = () => {
+          const isDarkTheme = useThemeStore.getState().getIsDark();
+          const navyColor = isDarkTheme ? '#0D1B2A' : '#F8FAFC';
+          NavigationBar.setBackgroundColorAsync(navyColor).catch(() => {});
+          NavigationBar.setButtonStyleAsync(isDarkTheme ? 'light' : 'dark').catch(() => {});
+        };
+        setTimeout(applyFix, 50);
+        setTimeout(applyFix, 250);
+      });
       return () => hideSubscription.remove();
     }
   }, [Colors.navy, isDark]);

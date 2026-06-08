@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
-  ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, TextInput
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, RefreshControl, FlatList
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Svg, Line } from 'react-native-svg';
-import * as Print from 'expo-print';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
@@ -18,30 +17,25 @@ import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '.
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
 import { getContributionsByResidence, createContribution, updateContribution } from '../../../src/db/repositories/contributions';
-import { getExpensesByResidence } from '../../../src/db/repositories/expenses';
+import { useContributionsData } from '../../../src/hooks/useContributionsData';
 import { BalanceCard } from '../../../src/components/ui/BalanceCard';
-import { Button } from '../../../src/components/ui/Button';
-import { SelectInput } from '../../../src/components/ui/SelectInput';
-import { DatePickerModal } from '../../../src/components/ui/DatePickerModal';
+import { AddContributionModal } from '../../../src/components/ui/AddContributionModal';
+import { generateDashboardPDF } from '../../../src/services/pdf.service';
 import type { Apartment, Contribution, Expense } from '../../../src/types';
 
 export default function ContributionsScreen() {
   const { profile, activeResidence, hasPermission } = useAuthStore();
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [totalExpenses, setTotalExpenses] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+
+  const {
+    apartments, contributions, expenses, balance, totalExpenses,
+    isLoading, isRefetching, refetch
+  } = useContributionsData(activeResidence?.id, currentYear);
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedAptId, setSelectedAptId] = useState<string>('');
-  const [amount, setAmount] = useState<number>(0);
-  const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
 
   // FAB Menu Animation
@@ -56,37 +50,10 @@ export default function ContributionsScreen() {
   const canManage = hasPermission('write');
   const monthlyFee = activeResidence?.monthly_fee || 0;
 
-  const loadData = useCallback(async () => {
-    if (!activeResidence) {
-      setLoading(false);
-      return;
-    }
-    try {
-      const [apts, contribs, expList] = await Promise.all([
-        getApartmentsByResidence(activeResidence.id),
-        getContributionsByResidence(activeResidence.id, currentYear),
-        getExpensesByResidence(activeResidence.id, currentYear)
-      ]);
-      
-      const yearTotalExp = expList.filter(e => e.status === 'paid' && !e.deleted).reduce((sum, e) => sum + (e.amount || 0), 0);
-      const yearTotalContribs = contribs.filter(c => c.paid).reduce((sum, c) => sum + (c.amount || 0), 0);
-      
-      setApartments(apts.filter(a => a.active));
-      setContributions(contribs);
-      setExpenses(expList);
-      setBalance(yearTotalContribs - yearTotalExp);
-      setTotalExpenses(yearTotalExp);
-    } catch (e) {
-      console.error('[Contributions] Load error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeResidence, currentYear]);
-
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      refetch();
+    }, [refetch])
   );
 
   const toggleMenu = () => setIsMenuOpen(prev => !prev);
@@ -125,222 +92,22 @@ export default function ContributionsScreen() {
   });
 
   const exportPDF = async () => {
-    try {
-      setIsSubmitting(true);
-      
-      // Construire le ledger (journal des opérations)
-      const ops: any[] = [];
-      const groupedContribs = new Map<string, any>();
-      contributions.filter(c => c.paid).forEach(c => {
-        const dateStr = new Date(c.paid_at || c.created_at).toISOString().split('T')[0];
-        const key = `${c.apartment_id}_${dateStr}`;
-        const monthLabel = MONTHS_SHORT_FR[c.month - 1].toUpperCase();
-
-        if (groupedContribs.has(key)) {
-          const group = groupedContribs.get(key);
-          group.amount += c.amount;
-          group.months.push(monthLabel);
-        } else {
-          groupedContribs.set(key, {
-            date: c.paid_at || c.created_at,
-            created_at: c.created_at,
-            apartment_id: c.apartment_id,
-            year: c.year,
-            amount: c.amount,
-            months: [monthLabel],
-          });
-        }
-      });
-
-      groupedContribs.forEach(group => {
-        const aptNumber = apartments.find(a => a.id === group.apartment_id)?.number || '';
-        const monthsCount = group.months.length;
-        const monthsLabel = `${monthsCount} mois`;
-        ops.push({
-          date: group.date,
-          created_at: group.created_at,
-          desc: `Cotisation App. ${aptNumber} (${monthsLabel} ${group.year})`,
-          sign: '+',
-          amount: group.amount
-        });
-      });
-      expenses.forEach(e => {
-        ops.push({
-          date: e.date,
-          created_at: e.created_at,
-          desc: e.description || e.type,
-          sign: '-',
-          amount: e.amount
-        });
-      });
-      
-      // Trier par ordre de date (sans l'heure), puis par date de création
-      ops.sort((a, b) => {
-        const dateStrA = new Date(a.date).toISOString().split('T')[0];
-        const dateStrB = new Date(b.date).toISOString().split('T')[0];
-        
-        if (dateStrA === dateStrB) {
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        }
-        return new Date(dateStrA).getTime() - new Date(dateStrB).getTime();
-      });
-      
-      // Calculer le solde courant
-      let currentBalance = 0;
-      ops.forEach(op => {
-        currentBalance += op.sign === '+' ? op.amount : -op.amount;
-        op.balance = currentBalance;
-      });
-
-      const renderLedgerRows = (list: any[]) => {
-        if (list.length === 0) return '<tr><td colspan="5">-</td></tr>';
-        return list.map(op => {
-          const color = op.sign === '+' ? '#388E3C' : '#D32F2F'; // Darker shades for text readability
-          return `
-          <tr style="color: ${color};">
-            <td style="border-color: #E2E8F0;">${new Date(op.date).toLocaleDateString('fr-FR')}</td>
-            <td style="text-align: left; border-color: #E2E8F0; font-weight: 500;">${op.desc}</td>
-            <td style="font-weight: bold; border-color: #E2E8F0;">${op.sign}</td>
-            <td style="font-weight: bold; border-color: #E2E8F0;">${op.amount}</td>
-            <td style="border-color: #E2E8F0;">${op.balance}</td>
-          </tr>
-          `;
-        }).join('');
-      };
-
-      const totalExp = totalExpenses ?? 0;
-      const currentBal = balance ?? 0;
-      const totalContribs = currentBal + totalExp;
-
-      const html = `
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-            <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-              h1 { text-align: center; color: #0D1B2A; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
-              
-              .summary-cards { display: flex; gap: 15px; margin-bottom: 25px; }
-              .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #E2E8F0; }
-              .card-green { background-color: rgba(76, 175, 80, 0.1); border-color: #4CAF50; color: #388E3C; }
-              .card-danger { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; color: #B91C1C; }
-              .card-navy { background-color: rgba(13, 27, 42, 0.1); border-color: #0D1B2A; color: #0D1B2A; }
-              .card-title { font-size: 10px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-              .card-value { font-size: 16px; font-weight: bold; }
-
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; page-break-inside: auto; }
-              tr { page-break-inside: avoid; page-break-after: auto; }
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              th, td { border: 1px solid #E2E8F0; padding: 6px; text-align: center; }
-              thead th { background-color: #1B263B; color: #FFF; border-color: #1B263B; }
-              
-              /* Zebra lines for all tables */
-              tbody tr:nth-child(even) { background-color: #F8FAFC; }
-              tbody tr:nth-child(even) th { background-color: #F8FAFC; }
-              
-              tfoot th { background-color: #F1F5F9; color: #0D1B2A; font-weight: bold; }
-              
-              .ledger-container { margin-top: 30px; }
-              .ledger-title { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #0D1B2A; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
-              .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; text-align: center; }
-            </style>
-          </head>
-          <body>
-            <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - ${(activeResidence?.name || "SYNDIC DE L'IMMEUBLE").toUpperCase()}</h1>
-            
-            <div class="summary-cards">
-              <div class="card card-green">
-                <div class="card-title">Total Contributions</div>
-                <div class="card-value">${totalContribs.toLocaleString('fr-MA')} DH</div>
-              </div>
-              <div class="card card-danger">
-                <div class="card-title">Total Dépenses</div>
-                <div class="card-value">${totalExp.toLocaleString('fr-MA')} DH</div>
-              </div>
-              <div class="card card-navy">
-                <div class="card-title">Reste à la Caisse</div>
-                <div class="card-value">${currentBal.toLocaleString('fr-MA')} DH</div>
-              </div>
-            </div>
-
-            <table class="grid-table">
-              <thead>
-                <tr>
-                  <th>APPARTEMENT</th>
-                  ${Array.from({ length: 12 }, (_, i) => `<th>${MONTHS_SHORT_FR[i].toUpperCase()}</th>`).join('')}
-                  <th>TOTAL ANNUEL</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${apartments.map(apt => {
-                  const aptTotal = contributions.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
-                  const residentName = apt.owner_name ? ` (${apt.owner_name})` : '';
-                  return `
-                  <tr>
-                    <th>${apt.number}${residentName}</th>
-                    ${Array.from({ length: 12 }, (_, i) => {
-                      const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === i + 1);
-                      if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
-                      return `<td></td>`;
-                    }).join('')}
-                    <th style="background-color: transparent;">${aptTotal > 0 ? aptTotal : ''}</th>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th style="text-align: left;">TOTAL PAR MOIS</th>
-                  ${Array.from({ length: 12 }, (_, i) => {
-                    const monthTotal = contributions.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
-                    return `<th>${monthTotal > 0 ? monthTotal : ''}</th>`;
-                  }).join('')}
-                  <th>${contributions.reduce((sum, c) => sum + c.amount, 0)}</th>
-                </tr>
-              </tfoot>
-            </table>
-
-            <div class="ledger-container">
-              <div class="ledger-title">Journal Chronologique des Opérations</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>DATE</th>
-                    <th>DESCRIPTION</th>
-                    <th>MOUVEMENT</th>
-                    <th>MONTANT</th>
-                    <th>SOLDE</th>
-                  </tr>
-                </thead>
-                <tbody>${renderLedgerRows(ops)}</tbody>
-              </table>
-            </div>
-
-            <div class="legend">
-              + = CRÉDIT (AUGMENTE LE SOLDE) | - = DÉBIT (DIMINUE LE SOLDE)
-            </div>
-          </body>
-        </html>
-      `;
-
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      
-      const dateStr = new Date().toISOString().split('T')[0];
-      const safeResidenceName = (activeResidence?.name || 'SYNDICOM').replace(/[^a-z0-9]/gi, '_').toUpperCase();
-      const newUri = `${FileSystem.cacheDirectory}${safeResidenceName}_${dateStr}.pdf`;
-      await FileSystem.moveAsync({ from: uri, to: newUri });
-      
-      await Sharing.shareAsync(newUri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Partager le rapport complet',
-        UTI: 'com.adobe.pdf'
-      });
-      
-    } catch (error: any) {
-      Alert.alert('Erreur', 'Impossible de générer le PDF');
-    } finally {
-      setIsSubmitting(false);
+    if (balance !== null && totalExpenses !== null && apartments && contributions && expenses) {
+      try {
+        const stats = {
+          totalContributions: (balance ?? 0) + (totalExpenses ?? 0),
+          totalExpenses: totalExpenses ?? 0,
+          balance: balance ?? 0,
+          monthlyContributions: 0,
+          monthlyExpenses: 0,
+          paidApartments: 0,
+          totalApartments: apartments.length,
+          paidPercent: 0,
+        };
+        await generateDashboardPDF(contributions, apartments, expenses, stats as any, activeResidence);
+      } catch (error: any) {
+        Alert.alert('Erreur', 'Impossible de générer le PDF');
+      }
     }
   };
 
@@ -352,7 +119,6 @@ export default function ContributionsScreen() {
         return;
       }
       try {
-        setIsSubmitting(true);
         const uri = await viewShotRef.current.capture();
         setIsCapturing(false);
         await Sharing.shareAsync(uri, {
@@ -363,8 +129,6 @@ export default function ContributionsScreen() {
       } catch (e: any) {
         setIsCapturing(false);
         Alert.alert('Erreur de partage', e.message);
-      } finally {
-        setIsSubmitting(false);
       }
     }, 150);
   };
@@ -392,8 +156,10 @@ export default function ContributionsScreen() {
 
     if (contrib) {
       // Optimistic delete
-      setContributions(prev => prev.filter(c => c.id !== contrib.id));
-      setBalance(prev => (prev ?? 0) - monthlyFee);
+      queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+        if (!old) return old;
+        return { ...old, contributions: old.contributions.filter((c: any) => c.id !== contrib.id) };
+      });
       
       // Background delete
       try {
@@ -405,7 +171,7 @@ export default function ContributionsScreen() {
         processingCellsRef.current.delete(cellKey);
       } catch (e: any) { 
         Alert.alert('Erreur', e.message); 
-        loadData().finally(() => processingCellsRef.current.delete(cellKey));
+        refetch().finally(() => processingCellsRef.current.delete(cellKey));
       }
     } else {
       // Optimistic create
@@ -425,8 +191,10 @@ export default function ContributionsScreen() {
         updated_at: new Date().toISOString()
       };
       
-      setContributions(prev => [...prev, newContrib]);
-      setBalance(prev => (prev ?? 0) + monthlyFee);
+      queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+        if (!old) return old;
+        return { ...old, contributions: [...old.contributions, newContrib] };
+      });
 
       // Background create
       try {
@@ -441,11 +209,18 @@ export default function ContributionsScreen() {
           comment: null,
           created_by: profile.id
         });
-        setContributions(prev => prev.map(c => c.id === tempId ? newRecord : c));
+        
+        queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            contributions: old.contributions.map((c: any) => c.id === tempId ? newRecord : c)
+          };
+        });
         processingCellsRef.current.delete(cellKey);
       } catch (e: any) {
         Alert.alert('Erreur', 'Impossible de créer la contribution: ' + e.message);
-        loadData().finally(() => processingCellsRef.current.delete(cellKey));
+        refetch().finally(() => processingCellsRef.current.delete(cellKey));
       }
     }
   };
@@ -453,104 +228,10 @@ export default function ContributionsScreen() {
   const openPaymentDialog = (aptId?: string) => {
     if (!canManage) return;
     setSelectedAptId(aptId || (apartments.length > 0 ? apartments[0].id : ''));
-    setAmount(monthlyFee);
-    setPayDate(new Date().toISOString().split('T')[0]);
     setModalVisible(true);
   };
 
-  const allocatePayment = async () => {
-    if (!activeResidence || !profile) return;
-    if (!selectedAptId || amount <= 0) {
-      Alert.alert('Erreur', 'Sélectionnez un appartement et saisissez un montant valide.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      let remainingAmount = amount;
-      const aptContribs = contributions.filter(c => c.apartment_id === selectedAptId);
-      
-      for (let month = 1; month <= 12; month++) {
-        if (remainingAmount <= 0) break;
-        
-        const contrib = aptContribs.find(c => c.month === month);
-        const currentPaid = contrib ? contrib.amount : 0;
-        
-        // Si le mois est déjà marqué comme "payé" (même à un ancien tarif), on ne réclame pas la différence
-        let needed = (contrib && contrib.paid) ? 0 : (monthlyFee - currentPaid);
-        
-        if (needed > 0) {
-          const toAllocate = Math.min(needed, remainingAmount);
-          const newTotal = currentPaid + toAllocate;
-          const isFullyPaid = newTotal >= monthlyFee;
-          
-          if (contrib) {
-            await updateContribution(contrib.id, {
-              amount: newTotal,
-              paid: isFullyPaid,
-              paid_at: isFullyPaid ? new Date(payDate).toISOString() : null
-            }, profile.id);
-          } else {
-            await createContribution({
-              residence_id: activeResidence.id,
-              apartment_id: selectedAptId,
-              month,
-              year: currentYear,
-              amount: toAllocate,
-              paid: isFullyPaid,
-              paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
-              comment: null,
-              created_by: profile.id
-            });
-          }
-          
-          remainingAmount -= toAllocate;
-        }
-      }
-      
-      // Handle surplus -> rollovers
-      if (remainingAmount > 0) {
-        let nextYear = currentYear + 1;
-        let nextMonth = 1;
-        
-        // Safety limit to max 5 years ahead
-        while (remainingAmount > 0 && nextYear < currentYear + 5) {
-          const toAllocate = Math.min(monthlyFee, remainingAmount);
-          const isFullyPaid = toAllocate >= monthlyFee;
-          
-          await createContribution({
-            residence_id: activeResidence.id,
-            apartment_id: selectedAptId,
-            month: nextMonth,
-            year: nextYear,
-            amount: toAllocate,
-            paid: isFullyPaid,
-            paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
-            comment: 'Excédent',
-            created_by: profile.id
-          });
-          remainingAmount -= toAllocate;
-          
-          nextMonth++;
-          if (nextMonth > 12) {
-            nextMonth = 1;
-            nextYear++;
-          }
-        }
-      }
-      
-      // Optimistic update for the card
-      setBalance(prev => (prev ?? 0) + Number(amount));
-      setModalVisible(false);
-      setTimeout(() => loadData(), 500);
-    } catch (e: any) {
-      Alert.alert('Erreur', e.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -645,10 +326,85 @@ export default function ContributionsScreen() {
     </View>
   );
 
+  const renderAptColumn = ({ item: apt }: { item: Apartment }) => {
+    const aptTotal = contributions
+      .filter(c => c.apartment_id === apt.id)
+      .reduce((sum, c) => sum + c.amount, 0);
+
+    return (
+      <View style={{ flexDirection: 'column' }}>
+        {/* Header Cell */}
+        <TouchableOpacity 
+          style={[styles.cell, styles.headerCell]}
+          activeOpacity={0.7}
+          onPress={() => handleDoubleTap(`apt_${apt.id}`, () => openPaymentDialog(apt.id))}
+        >
+          <Text style={styles.headerCellApt}>App. {apt.number}</Text>
+          <Text style={styles.headerCellName} numberOfLines={1}>{apt.owner_name || 'N/A'}</Text>
+        </TouchableOpacity>
+
+        {/* 12 Months Cells */}
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((month, index) => {
+          const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === month);
+          const isPaid = contrib && contrib.paid;
+          const isPartial = contrib && !contrib.paid && contrib.amount > 0;
+          
+          return (
+            <TouchableOpacity
+              key={`${apt.id}_${month}`}
+              style={[styles.cell, styles.dataCell, index % 2 !== 0 && { backgroundColor: Colors.navyCard }]}
+              activeOpacity={0.7}
+              onPress={() => handleDoubleTap(`${apt.id}_${month}`, () => handleCellDoubleTap(apt, month, contrib))}
+            >
+              {isPaid ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.primary, overflow: 'hidden' }}>
+                  <View style={{ backgroundColor: Colors.primary, paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
+                    <Ionicons name="checkmark" size={12} color={Colors.white} />
+                  </View>
+                  <View style={{ paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.primary }} numberOfLines={1} adjustsFontSizeToFit>
+                      {contrib.amount} <Text style={{ fontSize: 8 }}>{activeResidence?.currency || 'DH'}</Text>
+                    </Text>
+                  </View>
+                </View>
+              ) : isPartial ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.warning, overflow: 'hidden' }}>
+                  <View style={{ backgroundColor: Colors.warning, paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
+                    <Ionicons name="pie-chart" size={12} color={Colors.white} />
+                  </View>
+                  <View style={{ paddingHorizontal: 6, height: '100%', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: Colors.warning }} numberOfLines={1} adjustsFontSizeToFit>
+                      {contrib.amount} <Text style={{ fontSize: 8 }}>{activeResidence?.currency || 'DH'}</Text>
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.emptyCellText}>-</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Total Cell */}
+        <View style={[styles.cell, styles.totalDataCell]}>
+          <Text style={styles.totalDataText} numberOfLines={1} adjustsFontSizeToFit>
+            {aptTotal} <Text style={{ fontSize: 9 }}>{activeResidence?.currency || 'DH'}</Text>
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   const totalContribs = (balance ?? 0) + (totalExpenses ?? 0);
 
   return (
-    <View style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}>
+    <ScrollView 
+      style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
+      refreshControl={
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
+      }
+    >
       <ScreenHeader title="Contributions" />
 
       {/* Balance Card */}
@@ -663,7 +419,7 @@ export default function ContributionsScreen() {
         />
       )}
 
-      <View style={{ flex: 1, paddingBottom: 120 }}>
+      <View style={{ flex: 1 }}>
         <View style={[styles.tableContainer, { flexDirection: 'row', borderLeftWidth: 0, marginLeft: Spacing.md }]}>
           
           {/* STICKY COLUMN (LEFT) */}
@@ -691,15 +447,19 @@ export default function ContributionsScreen() {
           </View>
 
           {/* SCROLLABLE APARTMENTS (RIGHT) */}
-          <ScrollView 
+          <FlatList 
             horizontal 
-            bounces={false} 
+            data={apartments}
+            keyExtractor={apt => apt.id}
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
             style={styles.tableScrollX} 
             contentContainerStyle={[styles.tableContentX, { paddingLeft: 0 }]}
-            showsHorizontalScrollIndicator={false}
-          >
-            {renderMatrixData()}
-          </ScrollView>
+            renderItem={renderAptColumn}
+            initialNumToRender={4}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+          />
         </View>
       </View>
 
@@ -798,75 +558,21 @@ export default function ContributionsScreen() {
       )}
 
       {/* Payment Dialog */}
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Ajouter un paiement</Text>
-
-            <SelectInput
-              label="Appartement"
-              options={aptOptions}
-              selectedValue={selectedAptId}
-              onSelect={setSelectedAptId}
-            />
-
-            <View style={{ marginBottom: Spacing.xl, marginTop: Spacing.md }}>
-              <Text style={styles.inputLabel}>Date du paiement</Text>
-              <TouchableOpacity
-                style={[styles.textInput, { justifyContent: 'center' }]}
-                onPress={() => setDatePickerVisible(true)}
-              >
-                <Text style={{ color: Colors.textPrimary, fontSize: FontSize.md }}>
-                  {payDate}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ marginBottom: Spacing.xl }}>
-              <Text style={styles.inputLabel}>Montant (DH)</Text>
-              <View style={styles.amountControl}>
-                <TouchableOpacity 
-                  style={styles.amountBtn}
-                  onPress={() => setAmount(Math.max(0, amount - monthlyFee))}
-                >
-                  <Ionicons name="remove" size={24} color={Colors.textPrimary} />
-                </TouchableOpacity>
-                
-                <TextInput
-                  style={styles.amountInput}
-                  value={amount.toString()}
-                  onChangeText={(val) => setAmount(parseInt(val) || 0)}
-                  keyboardType="numeric"
-                />
-                
-                <TouchableOpacity 
-                  style={styles.amountBtn}
-                  onPress={() => setAmount(amount + monthlyFee)}
-                >
-                  <Ionicons name="add" size={24} color={Colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button label="Annuler" variant="outline" onPress={() => setModalVisible(false)} style={{ flex: 1 }} />
-              <Button label="Valider" onPress={allocatePayment} isLoading={isSubmitting} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Date Picker */}
-      <DatePickerModal
-        visible={datePickerVisible}
-        date={payDate}
-        onConfirm={(date) => {
-          setPayDate(date);
-          setDatePickerVisible(false);
+      <AddContributionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSuccess={() => {
+          setTimeout(() => refetch(), 100);
         }}
-        onCancel={() => setDatePickerVisible(false)}
+        apartments={apartments}
+        contributions={contributions}
+        currentYear={currentYear}
+        monthlyFee={monthlyFee}
+        preselectedAptId={selectedAptId}
       />
-    </View>
+
+
+    </ScrollView>
   );
 }
 
@@ -936,36 +642,5 @@ function createStyles(Colors: any) {
     zIndex: 100,
     ...Shadow.green,
   },
-
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center', padding: Spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: Colors.navyCard, borderRadius: Radius.xl,
-    padding: Spacing.xl, borderWidth: 1, borderColor: Colors.navyBorder,
-  },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: Spacing.lg },
-  
-  inputLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textSecondary, marginBottom: 8 },
-  textInput: {
-    backgroundColor: Colors.navy, borderWidth: 1, borderColor: Colors.navyBorder,
-    borderRadius: Radius.md, padding: Spacing.md, color: Colors.textPrimary, fontSize: FontSize.md,
-  },
-  
-  amountControl: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  amountBtn: {
-    width: 48, height: 48, borderRadius: Radius.md,
-    backgroundColor: Colors.navy, borderWidth: 1, borderColor: Colors.navyBorder,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  amountInput: {
-    flex: 1, height: 48, backgroundColor: Colors.navy,
-    borderWidth: 1, borderColor: Colors.navyBorder, borderRadius: Radius.md,
-    color: Colors.textPrimary, fontSize: FontSize.lg, fontWeight: FontWeight.bold,
-    textAlign: 'center',
-  },
-  
-  modalActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });
 }
