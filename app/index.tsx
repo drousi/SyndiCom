@@ -2,9 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import Svg, { Path, G } from 'react-native-svg';
 import { useThemeColors, FontWeight } from '../src/constants/theme';
+import { useLanguageStore } from '../src/store/language.store';
 
 export default function Index() {
   const Colors = useThemeColors();
+  const { t } = useLanguageStore();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const dotAnim1 = useRef(new Animated.Value(0.3)).current;
@@ -96,7 +98,7 @@ export default function Index() {
           letterSpacing: 0.5,
           marginTop: -8,
         }}>
-          Gestion de syndic simplifiée
+          {t('auth.tagline')}
         </Text>
       </Animated.View>
 

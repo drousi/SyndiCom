@@ -21,16 +21,17 @@ export default function AppLayout() {
   const canWrite = residenceRole === 'admin' || residenceRole === 'manager';
 
   const renderTabLabel = (labelKey: string) => ({ color }: { color: string }) => (
-    <Text 
+    <Text
       style={{
         color,
         fontSize: 11,
         fontFamily,
         fontWeight: 'bold',
         marginTop: 2,
+        lineHeight: 14,
+        includeFontPadding: false,
       }}
       numberOfLines={1}
-      adjustsFontSizeToFit
     >
       {t(labelKey as any)}
     </Text>
@@ -44,7 +45,7 @@ export default function AppLayout() {
           backgroundColor: Colors.navy,
           borderTopColor: Colors.navyBorder,
           borderTopWidth: 1,
-          height: 60 + insets.bottom,
+          height: 64 + insets.bottom,
           paddingBottom: insets.bottom + 8,
           paddingTop: 8,
         },

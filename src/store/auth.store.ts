@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import * as Linking from 'expo-linking';
 import { supabase } from '../supabase/client';
-import { Profile, SystemRole, ResidenceRole, ResidenceWithRole, PermissionAction } from '../types';
+import { Profile, SystemRole, ResidenceRole, ResidenceWithRole, PermissionAction, Residence, UserResidence } from '../types';
+
+type UserResidenceJoinRow = UserResidence & {
+  residences: Residence | null;
+};
+
+// Mutex: prevents concurrent loadSession calls
+let _sessionLoadingPromise: Promise<void> | null = null;
 
 interface AuthState {
   profile: Profile | null;
@@ -42,11 +49,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   loadSession: async (background = false) => {
-    try {
-      if (!background) {
-        set({ isLoading: true });
-      }
-      const { data: { session } } = await supabase.auth.getSession();
+    if (_sessionLoadingPromise) return _sessionLoadingPromise;
+
+    const run = async () => {
+      try {
+        if (!background) {
+          set({ isLoading: true });
+        }
+        const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
         set({ profile: null, isAuthenticated: false });
@@ -105,10 +115,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .select('*, residences(*)')
           .eq('user_id', uid);
 
-        residencesWithRole = (userResidences ?? []).map((ur: any) => ({
-          ...ur.residences,
-          role: ur.role as ResidenceRole,
-        }));
+        residencesWithRole = (userResidences ?? [] as UserResidenceJoinRow[])
+          .filter((ur): ur is UserResidenceJoinRow & { residences: Residence } => ur.residences !== null)
+          .map((ur) => ({
+            ...ur.residences,
+            role: ur.role as ResidenceRole,
+          }));
       }
 
       const activeResidence = residencesWithRole[0] ?? null;
@@ -131,7 +143,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ profile: null, isAuthenticated: false });
     } finally {
       set({ isLoading: false });
+      _sessionLoadingPromise = null;
     }
+  };
+
+    _sessionLoadingPromise = run();
+    return _sessionLoadingPromise;
   },
 
   signIn: async (email, password) => {

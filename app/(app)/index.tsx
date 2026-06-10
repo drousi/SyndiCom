@@ -8,11 +8,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
 } from 'react-native';
+import { openWhatsApp } from '../../src/utils/whatsapp';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
+import type { Apartment } from '../../src/types';
+
+type ApartmentWithUnpaid = Apartment & { unpaidMonthsCount: number };
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BalanceCard } from '../../src/components/ui/BalanceCard';
 import { EmptyState } from '../../src/components/ui/EmptyState';
@@ -104,7 +107,7 @@ export default function DashboardScreen() {
     await generateDashboardPDF(allContribs, allApts, allExpenses, stats, activeResidence);
   };
 
-  const sendWhatsAppReminder = (apt: any) => {
+  const sendWhatsAppReminder = (apt: ApartmentWithUnpaid) => {
     const phone = apt.phone || apt.whatsapp;
     if (!phone) {
       Alert.alert(
@@ -123,18 +126,7 @@ export default function DashboardScreen() {
     
     const message = `Bonjour ${apt.owner_name || ''},\n\nC'est le syndic de la résidence *${activeResidence?.name || ''}*.\nLe paiement de *${periodsStr}* de cotisation pour l'appartement *${apt.number}* est en attente.\n\nMerci de bien vouloir régulariser le paiement dès que possible.\n\nCordialement.`;
 
-    const cleanedPhone = phone.replace(/[^\d+]/g, '');
-    const url = `whatsapp://send?phone=${cleanedPhone}&text=${encodeURIComponent(message)}`;
-    
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
-      }
-    }).catch(() => {
-      Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
-    });
+    openWhatsApp(phone, message);
   };
 
   if (isLoading) {
@@ -158,28 +150,27 @@ export default function DashboardScreen() {
     <View style={styles.container}>
       <ScreenHeader title={t('dashboard.title')} />
 
-      {/* Balance Card — sticky, outside ScrollView */}
+      {/* Balance Card + PDF button — fixed, non-scrollable */}
       {stats && (
-        <BalanceCard
-          currentYear={currentYear}
-          setCurrentYear={setCurrentYear}
-          totalContributions={stats.totalContributions}
-          totalExpenses={stats.totalExpenses}
-          balance={stats.balance}
-          currency={activeResidence?.currency ?? 'DH'}
-        />
-      )}
-
-      {/* Bouton PDF Rapide */}
-      {stats && (
-        <View style={{ alignItems: 'flex-end', marginHorizontal: Spacing.xl, marginBottom: Spacing.xs }}>
-          <TouchableOpacity 
-            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: Radius.sm, gap: 6, ...Shadow.green }}
-            onPress={exportPDF}
-          >
-            <Ionicons name="document-text-outline" size={14} color={Colors.white} />
-            <Text style={{ color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold }}>{t('dashboard.pdf_report')}</Text>
-          </TouchableOpacity>
+        <View style={{ gap: Spacing.xs, marginBottom: Spacing.xs }}>
+          <BalanceCard
+            currentYear={currentYear}
+            setCurrentYear={setCurrentYear}
+            totalContributions={stats.totalContributions}
+            totalExpenses={stats.totalExpenses}
+            balance={stats.balance}
+            currency={activeResidence?.currency ?? 'DH'}
+            style={{ marginBottom: 0 }}
+          />
+          <View style={{ alignItems: 'flex-end', paddingHorizontal: Spacing.xl }}>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: Radius.sm, gap: 6, ...Shadow.green }}
+              onPress={exportPDF}
+            >
+              <Ionicons name="document-text-outline" size={14} color={Colors.white} />
+              <Text style={{ color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold }}>{t('dashboard.pdf_report')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -189,6 +180,7 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
+
         {/* Stats grid */}
         <View style={styles.statsGrid}>
           {/* Contributions */}
@@ -368,7 +360,7 @@ const createStyles = (Colors: any) => StyleSheet.create({
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xs, paddingBottom: 32, gap: Spacing.xl },
+  scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: 32, gap: Spacing.xl },
 
   // Balance Card
   balanceCard: {

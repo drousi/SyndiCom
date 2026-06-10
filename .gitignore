@@ -1,5 +1,6 @@
 .env
 google-service-account.json
+google-services.json
 node_modules/
 .expo/
 dist/

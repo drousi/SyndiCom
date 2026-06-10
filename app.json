@@ -2,7 +2,7 @@
   "expo": {
     "name": "SyndiCom",
     "slug": "syndicom",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "syndicom",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.syndicom.app",
-      "buildNumber": "10"
+      "buildNumber": "11"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -25,7 +25,7 @@
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
-      "versionCode": 10,
+      "versionCode": 11,
       "navigationBar": {
         "backgroundColor": "#0D1B2A",
         "barStyle": "light-content"

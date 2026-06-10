@@ -127,8 +127,8 @@ export default function SettingsScreen() {
     settings: Parameters<typeof reminderStore.updateSettings>[0]
   ) => {
     if (activeResidence) {
-      reminderStore.updateSettings(settings, activeResidence.id).catch((err) => {
-        Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres de rappel');
+      reminderStore.updateSettings(settings, activeResidence.id, () => {
+        Alert.alert(t('common.error'), t('settings.reminders_save_error'));
       });
     }
   };
@@ -511,7 +511,7 @@ export default function SettingsScreen() {
           {/* Custom Theme Switcher */}
           <View style={styles.menuItem}>
             <Ionicons name={localIsDark ? 'moon' : 'sunny'} size={24} color={Colors.primary} />
-            <Text style={styles.menuText}>{t('settings.dark_mode')}</Text>
+            <Text style={styles.menuText}>{localIsDark ? t('settings.dark_mode_on') : t('settings.dark_mode_off')}</Text>
             <Switch
               value={localIsDark}
               onValueChange={(val) => {

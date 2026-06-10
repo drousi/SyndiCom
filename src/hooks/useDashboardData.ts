@@ -133,7 +133,7 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
       ops.push({
         id: c.id,
         type: 'contribution',
-        label: t('dashboard.contribution_label', { number: (c as any).apartment_number ?? '' }),
+        label: t('dashboard.contribution_label', { number: c.apartment_number ?? '' }),
         sublabel,
         amount: c.amount,
         date: c.paid_at ?? c.updated_at ?? c.created_at,

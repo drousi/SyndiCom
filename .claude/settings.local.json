@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs -I {} basename {})",
+      "Bash(xargs wc:*)",
+      "Bash(git rm:*)"
+    ]
+  }
+}

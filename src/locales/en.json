@@ -17,7 +17,9 @@
     "confirm": "Confirm",
     "validate": "Validate",
     "currency_dh": "DH",
-    "mandatory_field": "Required field"
+    "mandatory_field": "Required field",
+    "error_loading": "Failed to load data.",
+    "retry": "Retry"
   },
   "days_min": {
     "lun": "M", "mar": "T", "mer": "W", "jeu": "T", "ven": "F", "sam": "S", "dim": "S"
@@ -102,6 +104,7 @@
     "add_apartment": "Add Apartment",
     "deactivate_confirm_title": "Deactivate Apt. {number}",
     "deactivate_confirm_desc": "The apartment will be marked inactive. Data will be preserved.",
+    "deactivate_error": "Unable to deactivate the apartment. Please try again.",
     "owner_unknown": "Unknown owner",
     "floor": "Floor {floor}",
     "whatsapp_remind": "Remind via WhatsApp",
@@ -128,6 +131,7 @@
     "total_quarterly": "TOTAL PER QUARTER",
     "total_yearly": "YEARLY TOTAL",
     "add_payment": "Add Payment",
+    "amount_invalid": "Amount must be greater than 0.",
     "apartment_label": "Apartment",
     "payment_date": "Payment Date",
     "amount_label": "Amount (DH)",
@@ -261,6 +265,8 @@
     "system": "System",
     "app_version": "Application Version",
     "dark_mode": "Dark Mode",
+    "dark_mode_on": "Dark Mode",
+    "dark_mode_off": "Light Mode",
     "language": "Language",
     "sign_out": "Logout",
     "sign_out_confirm": "Are you sure you want to log out?",
@@ -276,6 +282,7 @@
     "reminders_test": "Test reminder",
     "reminders_test_scheduled": "Test reminder scheduled",
     "reminders_test_desc": "You will receive a test notification with the reminder sound in 5 seconds.",
+    "reminders_save_error": "Failed to save reminder settings. Your changes have been reverted.",
     "restart_required_title": "Restart required",
     "restart_required_desc": "To apply language changes and layout direction (RTL), please restart the app.",
     "residence": {

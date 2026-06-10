@@ -17,7 +17,9 @@
     "confirm": "تأكيد",
     "validate": "تأكيد",
     "currency_dh": "درهم",
-    "mandatory_field": "حقل مطلوب"
+    "mandatory_field": "حقل مطلوب",
+    "error_loading": "فشل تحميل البيانات.",
+    "retry": "إعادة المحاولة"
   },
   "days_min": {
     "lun": "ن", "mar": "ث", "mer": "ر", "jeu": "خ", "ven": "ج", "sam": "س", "dim": "أ"
@@ -102,6 +104,7 @@
     "add_apartment": "إضافة شقة",
     "deactivate_confirm_title": "تعطيل الشقة {number}",
     "deactivate_confirm_desc": "سيتم تعليم الشقة كغير نشطة. سيتم الحفاظ على البيانات.",
+    "deactivate_error": "تعذر تعطيل الشقة. يرجى المحاولة مرة أخرى.",
     "owner_unknown": "مالك غير معروف",
     "floor": "الطابق {floor}",
     "whatsapp_remind": "تذكير عبر الواتساب",
@@ -128,6 +131,7 @@
     "total_quarterly": "المجموع ربع سنوي",
     "total_yearly": "المجموع السنوي",
     "add_payment": "إضافة دفعة",
+    "amount_invalid": "يجب أن يكون المبلغ أكبر من 0.",
     "apartment_label": "الشقة",
     "payment_date": "تاريخ الدفع",
     "amount_label": "المبلغ (درهم)",
@@ -261,6 +265,8 @@
     "system": "النظام",
     "app_version": "نسخة التطبيق",
     "dark_mode": "الوضع الداكن",
+    "dark_mode_on": "الوضع الداكن",
+    "dark_mode_off": "الوضع الفاتح",
     "language": "اللغة",
     "sign_out": "تسجيل الخروج",
     "sign_out_confirm": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
@@ -276,6 +282,7 @@
     "reminders_test": "تجربة التذكير",
     "reminders_test_scheduled": "تمت جدولة تذكير التجربة",
     "reminders_test_desc": "ستتلقى إشعار تجربة مع صوت التذكير في خلال 5 ثوانٍ.",
+    "reminders_save_error": "تعذّر حفظ إعدادات التذكير. تم التراجع عن تغييراتك.",
     "restart_required_title": "إعادة التشغيل مطلوبة",
     "restart_required_desc": "لتطبيق تغيير اللغة واتجاه العرض (RTL)، يرجى إغلاق التطبيق وإعادة فتحه.",
     "residence": {

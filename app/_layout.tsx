@@ -25,7 +25,84 @@ import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
-import { Platform, Keyboard, LogBox, View, Text, StyleSheet, I18nManager, DevSettings } from 'react-native';
+import { Platform, Keyboard, LogBox, View, Text, StyleSheet, I18nManager, DevSettings, TouchableOpacity } from 'react-native';
+
+// ─── Global Error Boundary ────────────────────────────────────────────────────
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[AppErrorBoundary]', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={errorBoundaryStyles.container}>
+          <Text style={errorBoundaryStyles.title}>Une erreur inattendue s'est produite</Text>
+          <Text style={errorBoundaryStyles.message}>{this.state.error?.message}</Text>
+          <TouchableOpacity
+            style={errorBoundaryStyles.button}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={errorBoundaryStyles.buttonText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const errorBoundaryStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1B2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  message: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  button: {
+    marginTop: 8,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});
+// ─────────────────────────────────────────────────────────────────────────────
 import { useLanguageStore } from '../src/store/language.store';
 
 LogBox.ignoreLogs(['setBackgroundColorAsync is not supported']);
@@ -251,19 +328,21 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <DialogProvider>
-        <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={Colors.navy} />
-        <View style={{ flex: 1, backgroundColor: Colors.navy }}>
-          <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: Colors.navy } }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(superuser)" />
-            <Stack.Screen name="(app)" />
-            <Stack.Screen name="(onboarding)" />
-          </Stack>
-        </View>
-      </DialogProvider>
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <DialogProvider>
+          <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={Colors.navy} />
+          <View style={{ flex: 1, backgroundColor: Colors.navy }}>
+            <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: Colors.navy } }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(superuser)" />
+              <Stack.Screen name="(app)" />
+              <Stack.Screen name="(onboarding)" />
+            </Stack>
+          </View>
+        </DialogProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 }

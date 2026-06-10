@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert, Linking,
+  RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
+import { openWhatsApp } from '../../../src/utils/whatsapp';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../../src/supabase/client';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,18 +66,7 @@ export default function ApartmentsScreen() {
     
     const message = `Bonjour ${apt.owner_name || ''},\n\nC'est le syndic de la résidence *${activeResidence?.name || ''}*.\nNous vous contactons pour le suivi des cotisations de l'appartement *${apt.number}*.\n\nMerci de bien vouloir régulariser vos cotisations en retard dès que possible ou de nous envoyer le justificatif si c'est déjà fait.\n\nCordialement.`;
 
-    const cleanedPhone = phone.replace(/[^\d+]/g, '');
-    const url = `whatsapp://send?phone=${cleanedPhone}&text=${encodeURIComponent(message)}`;
-    
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
-      }
-    }).catch(() => {
-      Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
-    });
+    openWhatsApp(phone, message);
   };
 
   const handleDelete = (id: string, number: string) => {
@@ -89,8 +79,12 @@ export default function ApartmentsScreen() {
           text: t('common.deactivate'),
           style: 'destructive',
           onPress: async () => {
-            await deleteApartment(id, profile?.id);
-            loadData();
+            try {
+              await deleteApartment(id, profile?.id);
+              loadData();
+            } catch (e) {
+              Alert.alert(t('common.error'), t('apartments.deactivate_error'));
+            }
           },
         },
       ]

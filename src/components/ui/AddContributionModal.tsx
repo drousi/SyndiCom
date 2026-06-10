@@ -73,7 +73,11 @@ export function AddContributionModal({
   }));
 
   const allocatePayment = async () => {
-    if (!selectedAptId || amount <= 0 || !activeResidence || !profile) return;
+    if (isSubmitting) return;
+    if (!selectedAptId || amount <= 0 || !activeResidence || !profile) {
+      if (amount <= 0) Alert.alert(t('common.error'), t('contributions.amount_invalid'));
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -197,7 +201,7 @@ export function AddContributionModal({
             <View style={styles.amountControl}>
               <TouchableOpacity
                 style={styles.amountBtn}
-                onPress={() => setAmount(Math.max(0, amount - monthlyFee))}
+                onPress={() => setAmount(Math.max(monthlyFee, amount - monthlyFee))}
               >
                 <Ionicons name="remove" size={24} color={Colors.textPrimary} />
               </TouchableOpacity>

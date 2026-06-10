@@ -22,13 +22,20 @@ import { BalanceCard } from '../../../src/components/ui/BalanceCard';
 import { AddContributionModal } from '../../../src/components/ui/AddContributionModal';
 import { generateDashboardPDF } from '../../../src/services/pdf.service';
 import { useLanguageStore } from '../../../src/store/language.store';
-import type { Apartment, Contribution, Expense } from '../../../src/types';
+import type { Apartment, Contribution, ContributionWithApartment, Expense } from '../../../src/types';
+
+type ContributionsPageData = {
+  apartments: Apartment[];
+  contributions: ContributionWithApartment[];
+  expenses: Expense[];
+};
 
 export default function ContributionsScreen() {
   const { profile, activeResidence, hasPermission } = useAuthStore();
   const queryClient = useQueryClient();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const { t, locale } = useLanguageStore();
+  const isRTL = locale === 'ar';
 
   const {
     apartments, contributions, expenses, balance, totalExpenses,
@@ -115,10 +122,11 @@ export default function ContributionsScreen() {
           monthlyExpenses: 0,
           paidApartments: 0,
           totalApartments: apartments.length,
+          unpaidCount: 0,
           paidPercent: 0,
         };
-        await generateDashboardPDF(contributions, apartments, expenses, stats as any, activeResidence);
-      } catch (error: any) {
+        await generateDashboardPDF(contributions, apartments, expenses, stats, activeResidence);
+      } catch (error) {
         Alert.alert('Erreur', 'Impossible de générer le PDF');
       }
     }
@@ -169,9 +177,9 @@ export default function ContributionsScreen() {
 
     if (contrib) {
       // Optimistic delete
-      queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+      queryClient.setQueryData<ContributionsPageData>(['contributions_page', activeResidence.id, currentYear], (old) => {
         if (!old) return old;
-        return { ...old, contributions: old.contributions.filter((c: any) => c.id !== contrib.id) };
+        return { ...old, contributions: old.contributions.filter((c) => c.id !== contrib.id) };
       });
       
       // Background delete
@@ -204,9 +212,9 @@ export default function ContributionsScreen() {
         updated_at: new Date().toISOString()
       };
       
-      queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+      queryClient.setQueryData<ContributionsPageData>(['contributions_page', activeResidence.id, currentYear], (old) => {
         if (!old) return old;
-        return { ...old, contributions: [...old.contributions, newContrib] };
+        return { ...old, contributions: [...old.contributions, newContrib as ContributionWithApartment] };
       });
 
       // Background create
@@ -223,11 +231,11 @@ export default function ContributionsScreen() {
           created_by: profile.id
         });
         
-        queryClient.setQueryData(['contributions_page', activeResidence.id, currentYear], (old: any) => {
+        queryClient.setQueryData<ContributionsPageData>(['contributions_page', activeResidence.id, currentYear], (old) => {
           if (!old) return old;
           return {
             ...old,
-            contributions: old.contributions.map((c: any) => c.id === tempId ? newRecord : c)
+            contributions: old.contributions.map((c) => c.id === tempId ? { ...newRecord, apartment_number: '', apartment_owner: null } : c)
           };
         });
         processingCellsRef.current.delete(cellKey);
@@ -412,18 +420,9 @@ export default function ContributionsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-        alwaysBounceVertical={false}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
-        }
-      >
-        <ScreenHeader title={t('tabs.contributions')} />
+      <ScreenHeader title={t('tabs.contributions')} />
 
-      {/* Balance Card */}
+      {/* Balance Card — fixed, non-scrollable */}
       {balance !== null && totalExpenses !== null && (
         <BalanceCard
           currentYear={currentYear}
@@ -435,6 +434,20 @@ export default function ContributionsScreen() {
         />
       )}
 
+      <ScrollView
+        style={[styles.container, isCapturing && { flex: undefined, height: 'auto' }]}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+        alwaysBounceVertical={false}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+
       <View style={{ flex: 1 }}>
         <View style={[styles.tableContainer, { flexDirection: 'row', borderLeftWidth: 0, marginLeft: Spacing.md }]}>
           
@@ -443,7 +456,7 @@ export default function ContributionsScreen() {
             {/* Corner Cell */}
             <View style={[styles.cell, styles.cornerCell, { borderLeftWidth: 0 }]}>
               <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
-                <Line x1="0" y1="0" x2="100%" y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
+                <Line x1={isRTL ? "100%" : "0"} y1="0" x2={isRTL ? "0" : "100%"} y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
               </Svg>
               <Text style={{ position: 'absolute', top: 4, end: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
                 {t('tabs.apartments')}
@@ -517,7 +530,7 @@ export default function ContributionsScreen() {
                 <View style={{ borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.navyBorder, backgroundColor: Colors.navy }}>
                   <View style={[styles.cell, styles.cornerCell, { borderLeftWidth: 0 }]}>
                     <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
-                      <Line x1="0" y1="0" x2="100%" y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
+                      <Line x1={isRTL ? "100%" : "0"} y1="0" x2={isRTL ? "0" : "100%"} y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
                     </Svg>
                     <Text style={{ position: 'absolute', top: 4, end: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
                       {t('tabs.apartments')}

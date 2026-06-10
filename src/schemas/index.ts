@@ -4,7 +4,7 @@ export const residenceSchema = z.object({
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   address: z.string().optional(),
   currency: z.string().default('DH'),
-  monthly_fee: z.number({ invalid_type_error: 'Montant invalide' }).min(0, 'Le montant doit être positif'),
+  monthly_fee: z.number({ invalid_type_error: 'Montant invalide' }).min(0.01, 'Le montant doit être supérieur à 0'),
 });
 
 export type ResidenceFormData = z.infer<typeof residenceSchema>;
@@ -31,7 +31,7 @@ export const expenseSchema = z.object({
 export type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 export const contributionSchema = z.object({
-  amount: z.number({ invalid_type_error: 'Montant invalide' }).min(0, 'Montant invalide'),
+  amount: z.number({ invalid_type_error: 'Montant invalide' }).min(0.01, 'Le montant doit être supérieur à 0'),
   comment: z.string().optional(),
   paid: z.boolean().default(false),
 });

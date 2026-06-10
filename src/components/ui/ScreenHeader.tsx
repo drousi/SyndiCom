@@ -5,6 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../constants/theme';
 import { Logo } from './Logo';
 
+// paddingTop(56) + row(~38px) + paddingBottom(16) = ~110px
+// Used by RefreshControl progressViewOffset on screens where ScreenHeader is inside the scroll
+export const SCREEN_HEADER_HEIGHT = 110;
+
 interface ScreenHeaderProps {
   title: string;
   showSettings?: boolean;

@@ -11,6 +11,7 @@ interface BalanceCardProps {
   totalExpenses: number;
   balance: number;
   currency?: string;
+  style?: object;
 }
 
 export function BalanceCard({
@@ -20,12 +21,13 @@ export function BalanceCard({
   totalExpenses,
   balance,
   currency = 'DH',
+  style,
 }: BalanceCardProps) {
   const Colors = useThemeColors();
   const { t, isRTL } = useLanguageStore();
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.navyCard, borderColor: Colors.primary }]}>
+    <View style={[styles.container, { backgroundColor: Colors.navyCard, borderColor: Colors.primary }, style]}>
       {/* Year Selector */}
       <View style={[styles.yearSelector, { borderColor: Colors.navyBorder }]}>
         <TouchableOpacity style={styles.arrowBtn} onPress={() => setCurrentYear(y => y - 1)}>

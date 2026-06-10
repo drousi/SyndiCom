@@ -1,6 +1,10 @@
 import { supabase } from '../../supabase/client';
 import { Contribution, ContributionWithApartment } from '../../types';
 
+type ContributionJoinRow = Contribution & {
+  apartments: { number: string; owner_name: string | null } | null;
+};
+
 export async function getContributionsByResidence(
   residenceId: string,
   year: number
@@ -15,10 +19,10 @@ export async function getContributionsByResidence(
   if (error) throw error;
 
   // Format response to match old local SQLite JOIN output
-  return (data ?? []).map((c: any) => ({
+  return (data ?? [] as ContributionJoinRow[]).map((c) => ({
     ...c,
-    apartment_number: c.apartments?.number,
-    apartment_owner: c.apartments?.owner_name,
+    apartment_number: c.apartments?.number ?? '',
+    apartment_owner: c.apartments?.owner_name ?? null,
   }));
 }
 

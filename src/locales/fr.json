@@ -17,7 +17,9 @@
     "confirm": "Confirmer",
     "validate": "Valider",
     "currency_dh": "DH",
-    "mandatory_field": "Champ requis"
+    "mandatory_field": "Champ requis",
+    "error_loading": "Erreur lors du chargement des données.",
+    "retry": "Réessayer"
   },
   "days_min": {
     "lun": "L", "mar": "M", "mer": "M", "jeu": "J", "ven": "V", "sam": "S", "dim": "D"
@@ -102,6 +104,7 @@
     "add_apartment": "Ajouter un appartement",
     "deactivate_confirm_title": "Désactiver App. {number}",
     "deactivate_confirm_desc": "L'appartement sera marqué comme inactif. Les données seront conservées.",
+    "deactivate_error": "Impossible de désactiver l'appartement. Veuillez réessayer.",
     "owner_unknown": "Propriétaire inconnu",
     "floor": "Étage {floor}",
     "whatsapp_remind": "Relancer WhatsApp",
@@ -128,6 +131,7 @@
     "total_quarterly": "TOTAL PAR TRIM.",
     "total_yearly": "TOTAL ANNUEL",
     "add_payment": "Ajouter un paiement",
+    "amount_invalid": "Le montant doit être supérieur à 0.",
     "apartment_label": "Appartement",
     "payment_date": "Date du paiement",
     "amount_label": "Montant (DH)",
@@ -261,6 +265,8 @@
     "system": "Système",
     "app_version": "Version de l'application",
     "dark_mode": "Mode Sombre",
+    "dark_mode_on": "Mode Sombre",
+    "dark_mode_off": "Mode Clair",
     "language": "Langue",
     "sign_out": "Se déconnecter",
     "sign_out_confirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
@@ -276,6 +282,7 @@
     "reminders_test": "Tester le rappel",
     "reminders_test_scheduled": "Rappel de test programmé",
     "reminders_test_desc": "Vous recevrez une notification de test avec le son de rappel dans 5 secondes.",
+    "reminders_save_error": "Impossible de sauvegarder les paramètres de rappel. Vos modifications ont été annulées.",
     "restart_required_title": "Redémarrage requis",
     "restart_required_desc": "Pour appliquer le changement de langue et la direction d'affichage (RTL), veuillez fermer et rouvrir l'application.",
     "residence": {

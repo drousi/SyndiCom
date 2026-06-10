@@ -3,10 +3,28 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import { MONTHS_SHORT_FR, getPeriodShortLabels } from '../constants/app';
-import type { DashboardStats, Apartment, Contribution, Expense, ResidenceWithRole } from '../types';
+import type { DashboardStats, Apartment, ContributionWithApartment, Expense, ResidenceWithRole } from '../types';
+
+interface LedgerOperation {
+  date: string;
+  created_at: string;
+  desc: string;
+  sign: '+' | '-';
+  amount: number;
+  balance?: number;
+}
+
+interface GroupedContribution {
+  date: string;
+  created_at: string;
+  apartment_id: string;
+  year: number;
+  amount: number;
+  months: string[];
+}
 
 export async function generateDashboardPDF(
-  allContribs: any[],
+  allContribs: ContributionWithApartment[],
   allApts: Apartment[],
   allExpenses: Expense[],
   stats: DashboardStats,
@@ -17,12 +35,12 @@ export async function generateDashboardPDF(
     const periodShortLabels = getPeriodShortLabels(frequency);
     const maxPeriods = periodShortLabels.length;
 
-    const ops: any[] = [];
-    const groupedContribs = new Map<string, any>();
+    const ops: LedgerOperation[] = [];
+    const groupedContribs = new Map<string, GroupedContribution>();
     allContribs.filter(c => c.paid).forEach(c => {
       const dateStr = new Date(c.paid_at || c.created_at).toISOString().split('T')[0];
       const key = `${c.apartment_id}_${dateStr}`;
-      const monthLabel = (periodShortLabels[c.period_number - 1] || '').toUpperCase();
+      const monthLabel = (periodShortLabels[c.month - 1] || '').toUpperCase();
 
       if (groupedContribs.has(key)) {
         const group = groupedContribs.get(key);
@@ -85,7 +103,7 @@ export async function generateDashboardPDF(
       op.balance = currentBalance;
     });
 
-    const renderLedgerItems = (list: any[]) => {
+    const renderLedgerItems = (list: LedgerOperation[]) => {
       if (list.length === 0) return '<div style="text-align: center; padding: 10px;">-</div>';
       return list.map(op => {
         const color = op.sign === '+' ? '#388E3C' : '#D32F2F';
@@ -271,7 +289,8 @@ export async function generateDashboardPDF(
       UTI: 'com.adobe.pdf'
     });
 
-  } catch (error: any) {
-    Alert.alert('Erreur', 'Impossible de générer le PDF');
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Erreur inconnue';
+    Alert.alert('Erreur', `Impossible de générer le PDF\n${msg}`);
   }
 }
