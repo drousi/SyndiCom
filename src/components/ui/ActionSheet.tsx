@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useLanguageStore } from '../../store/language.store';
 
 export interface ActionSheetOption {
   label: string;
@@ -25,6 +26,7 @@ interface ActionSheetProps {
 export function ActionSheet({ visible, title, subtitle, options, onClose }: ActionSheetProps) {
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t } = useLanguageStore();
 
   return (
     <Modal
@@ -75,7 +77,7 @@ export function ActionSheet({ visible, title, subtitle, options, onClose }: Acti
               </View>
 
               <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-                <Text style={styles.cancelText}>Annuler</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableWithoutFeedback>

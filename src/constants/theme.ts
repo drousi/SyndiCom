@@ -1,6 +1,5 @@
-// SyndiCom Design System – Charte Graphique Officielle
-
 import { useThemeStore } from '../store/theme.store';
+import { useLanguageStore } from '../store/language.store';
 
 export const DarkColors = {
   // Primary palette
@@ -158,3 +157,36 @@ export const Shadow = {
     elevation: 8,
   },
 } as const;
+
+export const useFontFamily = (weight: 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' = 'regular') => {
+  const locale = useLanguageStore((state) => state.locale);
+  const isArabic = locale === 'ar';
+
+  if (isArabic) {
+    switch (weight) {
+      case 'extrabold':
+      case 'bold':
+        return 'Cairo_700Bold';
+      case 'semibold':
+        return 'Cairo_600SemiBold';
+      case 'medium':
+        return 'Cairo_500Medium';
+      case 'regular':
+      default:
+        return 'Cairo_400Regular';
+    }
+  } else {
+    switch (weight) {
+      case 'extrabold':
+      case 'bold':
+        return 'Inter_700Bold';
+      case 'semibold':
+        return 'Inter_600SemiBold';
+      case 'medium':
+        return 'Inter_500Medium';
+      case 'regular':
+      default:
+        return 'Inter_400Regular';
+    }
+  }
+};

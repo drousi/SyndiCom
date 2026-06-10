@@ -35,6 +35,12 @@ export interface Residence {
   currency: string;
   apartment_count: number;
   monthly_fee: number;
+  contribution_frequency: 'monthly' | 'quarterly' | 'yearly';
+  // Reminder settings (stored per-residence in Supabase)
+  reminder_enabled: boolean;
+  reminder_day: number;    // 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat
+  reminder_hour: number;
+  reminder_minute: number;
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +73,7 @@ export interface Contribution {
   id: string;
   residence_id: string;
   apartment_id: string;
-  month: number; // 1–12
+  month: number; // 1–12 depending on frequency
   year: number;
   amount: number;
   paid: boolean;

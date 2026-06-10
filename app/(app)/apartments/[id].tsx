@@ -17,6 +17,7 @@ import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { SelectInput } from '../../../src/components/ui/SelectInput';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function ApartmentFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function ApartmentFormScreen() {
   const { activeResidence, profile } = useAuthStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t } = useLanguageStore();
   const [loading, setLoading] = useState(false);
   const [aptResidentId, setAptResidentId] = useState<string | null>(null);
   const [residentPassword, setResidentPassword] = useState('');
@@ -270,7 +272,7 @@ export default function ApartmentFormScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isNew ? 'Nouvel appartement' : 'Modifier l\'appartement'}</Text>
+        <Text style={styles.headerTitle}>{isNew ? t('apartments.form_new_title') : t('apartments.form_edit_title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -280,7 +282,7 @@ export default function ApartmentFormScreen() {
           name="number"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Numéro d'appartement *"
+              label={t('apartments.form_number_label')}
               placeholder="Ex: 01, A1, RDC..."
               onChangeText={onChange}
               onBlur={onBlur}
@@ -296,7 +298,7 @@ export default function ApartmentFormScreen() {
           name="floor"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Étage (optionnel)"
+              label={t('apartments.form_floor_label')}
               placeholder="Ex: 1, 2, RDC..."
               keyboardType="number-pad"
               onChangeText={v => onChange(parseInt(v) || null)}
@@ -472,8 +474,8 @@ export default function ApartmentFormScreen() {
         {/* Active toggle */}
         <View style={styles.toggleRow}>
           <View>
-            <Text style={styles.toggleLabel}>Appartement actif</Text>
-            <Text style={styles.toggleSub}>Les appartements inactifs sont exclus du suivi</Text>
+            <Text style={styles.toggleLabel}>{t('apartments.form_active_label')}</Text>
+            <Text style={styles.toggleSub}>{t('apartments.form_active_sub')}</Text>
           </View>
           <Controller
             control={control}
@@ -490,7 +492,7 @@ export default function ApartmentFormScreen() {
         </View>
 
         <Button
-          label={isNew ? 'Ajouter l\'appartement' : 'Enregistrer les modifications'}
+          label={isNew ? t('apartments.form_add_btn') : t('apartments.form_save_btn')}
           onPress={handleSubmit(onSubmit)}
           isLoading={loading}
           fullWidth

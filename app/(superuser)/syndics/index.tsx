@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../src/supabase/client';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
+import { useLanguageStore } from '../../../src/store/language.store';
 import { Logo } from '../../../src/components/ui/Logo';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import type { Residence } from '../../../src/types';
@@ -22,6 +23,7 @@ interface SyndicItem {
 export default function SuperuserDashboard() {
   const router = useRouter();
   const { profile } = useAuthStore();
+  const { isRTL } = useLanguageStore();
   const [items, setItems] = useState<SyndicItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -147,7 +149,7 @@ export default function SuperuserDashboard() {
                   <Text style={styles.syndicAddress}>{item.residence.address}</Text>
                 )}
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={Colors.textSecondary} />
             </View>
 
             {/* Stats row */}

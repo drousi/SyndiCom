@@ -19,11 +19,13 @@ import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/store/language.store';
 
 export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { signUp, isLoading, error, clearError } = useAuthStore();
+  const { t } = useLanguageStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
@@ -38,9 +40,9 @@ export default function RegisterScreen() {
       await signUp(data.email, data.password, data.fullName);
       
       Alert.alert(
-        'Inscription réussie',
-        'Veuillez vérifier votre boîte mail pour confirmer votre adresse email avant de vous connecter.',
-        [{ text: 'Compris', onPress: () => router.replace('/(auth)/login') }]
+        t('auth.register_success'),
+        t('auth.check_mailbox_confirm'),
+        [{ text: t('auth.understood'), onPress: () => router.replace('/(auth)/login') }]
       );
     } catch (err: any) {
       // L'erreur est gérée dans le store et affichée via la variable error
@@ -61,13 +63,13 @@ export default function RegisterScreen() {
         {/* Header / Logo */}
         <View style={styles.header}>
           <Logo width={200} height={55} />
-          <Text style={styles.tagline}>La gestion de syndic simplifiée</Text>
+          <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>Créer un compte</Text>
-          <Text style={styles.subtitle}>Créez votre compte pour gérer votre immeuble</Text>
+          <Text style={styles.title}>{t('auth.register_title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.register_subtitle')}</Text>
 
           {/* Global error */}
           {error && (
@@ -83,8 +85,8 @@ export default function RegisterScreen() {
             name="fullName"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Nom complet"
-                placeholder="Ex: Jean Dupont"
+                label={t('auth.fullname')}
+                placeholder={t('auth.fullname_placeholder') || 'Ex: Jean Dupont'}
                 autoCapitalize="words"
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -101,8 +103,8 @@ export default function RegisterScreen() {
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Email"
-                placeholder="votre@email.com"
+                label={t('auth.email')}
+                placeholder={t('auth.email_placeholder') || 'votre@email.com'}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -121,8 +123,8 @@ export default function RegisterScreen() {
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Mot de passe"
-                placeholder="••••••••"
+                label={t('auth.password')}
+                placeholder={t('auth.password_placeholder') || '••••••••'}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 onChangeText={onChange}
@@ -148,8 +150,8 @@ export default function RegisterScreen() {
             name="confirmPassword"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Confirmer le mot de passe"
-                placeholder="••••••••"
+                label={t('auth.confirm_password')}
+                placeholder={t('auth.password_placeholder') || '••••••••'}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 onChangeText={onChange}
@@ -163,7 +165,7 @@ export default function RegisterScreen() {
 
           {/* Submit */}
           <Button
-            label="S'inscrire"
+            label={t('auth.register')}
             onPress={handleSubmit(onSubmit)}
             isLoading={isLoading}
             fullWidth
@@ -173,9 +175,9 @@ export default function RegisterScreen() {
 
           {/* Login Link */}
           <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Déjà un compte ? </Text>
+            <Text style={styles.loginText}>{t('auth.already_have_account')}</Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Text style={styles.loginLink}>Se connecter</Text>
+              <Text style={styles.loginLink}>{t('auth.login')}</Text>
             </TouchableOpacity>
           </View>
         </View>

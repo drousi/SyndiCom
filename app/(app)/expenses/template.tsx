@@ -8,6 +8,7 @@ import { DateField } from '../../../src/components/ui/DateField';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import { createExpenseTemplate, updateExpenseTemplate, getActiveExpenseTemplates } from '../../../src/db/repositories/expense_templates';
 import { supabase } from '../../../src/supabase/client';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function TemplateScreen() {
   const { id } = useLocalSearchParams();
@@ -15,6 +16,7 @@ export default function TemplateScreen() {
   const { activeResidence, profile } = useAuthStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t, isRTL } = useLanguageStore();
 
   const [loading, setLoading] = useState(!!id && id !== 'new');
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +54,7 @@ export default function TemplateScreen() {
       const loadDay = data.recurrence_day || 1;
       setFirstBillingDate(new Date(new Date().getFullYear(), loadMonth, loadDay));
     } catch (e: any) {
-      Alert.alert('Erreur', 'Impossible de charger le modèle.');
+      Alert.alert(t('common.error'), t('expenses.template_load_error'));
       router.back();
     } finally {
       setLoading(false);
@@ -61,7 +63,7 @@ export default function TemplateScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Erreur', 'Le nom du modèle est obligatoire.');
+      Alert.alert(t('common.error'), t('expenses.template_error_name'));
       return;
     }
     
@@ -72,7 +74,7 @@ export default function TemplateScreen() {
     if (amountType === 'fixed') {
       amount = parseFloat(defaultAmount.replace(',', '.'));
       if (isNaN(amount) || amount <= 0) {
-        Alert.alert('Erreur', 'Le montant fixe doit être supérieur à 0.');
+        Alert.alert(t('common.error'), t('expenses.template_error_amount'));
         return;
       }
     }
@@ -101,7 +103,7 @@ export default function TemplateScreen() {
       }
       router.back();
     } catch (e: any) {
-      Alert.alert('Erreur', 'Erreur lors de l\'enregistrement.');
+      Alert.alert(t('common.error'), t('expenses.template_save_error'));
     } finally {
       setSubmitting(false);
     }
@@ -120,18 +122,18 @@ export default function TemplateScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{id === 'new' ? 'Nouveau Modèle' : 'Modifier Modèle'}</Text>
+          <Text style={styles.headerTitle}>{id === 'new' ? t('expenses.template_title_new') : t('expenses.template_title_edit')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Nom de la dépense</Text>
+            <Text style={styles.label}>{t('expenses.template_name_label')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: Salaire Concierge"
+              placeholder={t('expenses.template_name_placeholder')}
               placeholderTextColor={Colors.textMuted}
               value={title}
               onChangeText={setTitle}
@@ -139,7 +141,7 @@ export default function TemplateScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Catégorie</Text>
+            <Text style={styles.label}>{t('expenses.template_category_label')}</Text>
             <View style={styles.typeGrid}>
               {EXPENSE_TYPES.map(expenseType => (
                 <TouchableOpacity
@@ -153,7 +155,7 @@ export default function TemplateScreen() {
                     color={type === expenseType.key ? Colors.white : Colors.textSecondary}
                   />
                   <Text style={[styles.typeChipText, type === expenseType.key && styles.typeChipTextSelected]}>
-                    {expenseType.label}
+                    {t(`expense_types.${expenseType.key}` as any) || expenseType.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -161,33 +163,33 @@ export default function TemplateScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Type de montant</Text>
+            <Text style={styles.label}>{t('expenses.template_amount_type_label')}</Text>
             <View style={styles.typeSelector}>
               <TouchableOpacity 
                 style={[styles.typeBtn, amountType === 'fixed' && styles.typeBtnActive]}
                 onPress={() => setAmountType('fixed')}
               >
                 <Ionicons name="pricetag-outline" size={18} color={amountType === 'fixed' ? Colors.white : Colors.textSecondary} />
-                <Text style={[styles.typeBtnText, amountType === 'fixed' && { color: Colors.white }]}>Fixe</Text>
+                <Text style={[styles.typeBtnText, amountType === 'fixed' && { color: Colors.white }]}>{t('expenses.template_amount_fixed')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.typeBtn, amountType === 'variable' && styles.typeBtnActive]}
                 onPress={() => setAmountType('variable')}
               >
                 <Ionicons name="flash-outline" size={18} color={amountType === 'variable' ? Colors.white : Colors.textSecondary} />
-                <Text style={[styles.typeBtnText, amountType === 'variable' && { color: Colors.white }]}>Variable</Text>
+                <Text style={[styles.typeBtnText, amountType === 'variable' && { color: Colors.white }]}>{t('expenses.template_amount_variable')}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.helpText}>
-              {amountType === 'fixed' 
-                ? 'Le montant sera pré-rempli chaque mois.' 
-                : 'Le montant vous sera demandé chaque mois (ex: Facture d\'électricité).'}
+              {amountType === 'fixed'
+                ? t('expenses.template_amount_fixed_help')
+                : t('expenses.template_amount_variable_help')}
             </Text>
           </View>
 
           {amountType === 'fixed' && (
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Montant ({activeResidence?.currency || 'DH'})</Text>
+              <Text style={styles.label}>{t('expenses.template_amount_field', { currency: activeResidence?.currency || 'DH' })}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="2500"
@@ -200,39 +202,39 @@ export default function TemplateScreen() {
           )}
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Périodicité</Text>
+            <Text style={styles.label}>{t('expenses.template_periodicity_label')}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity 
                 style={[styles.typeBtn, periodicity === 'monthly' && styles.typeBtnActive]}
                 onPress={() => setPeriodicity('monthly')}
               >
-                <Text style={[styles.typeBtnText, periodicity === 'monthly' && { color: Colors.white }]}>Mensuel</Text>
+                <Text style={[styles.typeBtnText, periodicity === 'monthly' && { color: Colors.white }]}>{t('frequencies.monthly')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.typeBtn, periodicity === 'quarterly' && styles.typeBtnActive]}
                 onPress={() => setPeriodicity('quarterly')}
               >
-                <Text style={[styles.typeBtnText, periodicity === 'quarterly' && { color: Colors.white }]}>Trimestriel</Text>
+                <Text style={[styles.typeBtnText, periodicity === 'quarterly' && { color: Colors.white }]}>{t('frequencies.quarterly')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.typeBtn, periodicity === 'yearly' && styles.typeBtnActive]}
                 onPress={() => setPeriodicity('yearly')}
               >
-                <Text style={[styles.typeBtnText, periodicity === 'yearly' && { color: Colors.white }]}>Annuel</Text>
+                <Text style={[styles.typeBtnText, periodicity === 'yearly' && { color: Colors.white }]}>{t('frequencies.yearly')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.formGroup}>
             <DateField
-              label={periodicity === 'monthly' ? "Date de facturation *" : "Première date de facturation *"}
+              label={periodicity === 'monthly' ? t('expenses.template_billing_date_monthly') : t('expenses.template_billing_date_other')}
               value={firstBillingDate}
               onChange={setFirstBillingDate}
             />
             <Text style={styles.helpText}>
-              {periodicity === 'monthly' 
-                ? 'Seul le jour (ex: le 1er du mois) sera pris en compte pour la récurrence.' 
-                : 'Le jour et le mois de cette date seront utilisés pour générer les prochaines factures automatiquement.'}
+              {periodicity === 'monthly'
+                ? t('expenses.template_billing_date_monthly_help')
+                : t('expenses.template_billing_date_other_help')}
             </Text>
           </View>
 
@@ -244,7 +246,7 @@ export default function TemplateScreen() {
             {submitting ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.saveBtnText}>Enregistrer le modèle</Text>
+              <Text style={styles.saveBtnText}>{t('expenses.template_save_btn')}</Text>
             )}
           </TouchableOpacity>
         </ScrollView>

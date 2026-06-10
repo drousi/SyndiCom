@@ -46,8 +46,8 @@ export function Logo({ width = 110, height = 31, style, showText = true }: LogoP
           fontWeight: 'bold',
           letterSpacing: -0.5
         }}>
-          <Text style={{ color: Colors.textPrimary }}>Syndi</Text>
-          <Text style={{ color: '#81ae45' }}>Com</Text>
+          <Text style={{ color: Colors.textPrimary, fontWeight: 'bold' }}>Syndi</Text>
+          <Text style={{ color: '#81ae45', fontWeight: 'bold' }}>Com</Text>
         </Text>
       )}
     </View>

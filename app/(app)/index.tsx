@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,16 +20,55 @@ import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '.
 import { useDashboardData } from '../../src/hooks/useDashboardData';
 import { MONTHS_FR, MONTHS_SHORT_FR } from '../../src/constants/app';
 import { generateDashboardPDF } from '../../src/services/pdf.service';
+import { scheduleConfiguredReminder } from '../../src/services/notification.service';
+import { useReminderStore } from '../../src/store/reminder.store';
+import { useLanguageStore } from '../../src/store/language.store';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { activeResidence } = useAuthStore();
+  const { activeResidence, hasPermission } = useAuthStore();
+  const canWrite = hasPermission('write');
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const currentMonth = new Date().getMonth() + 1;
+  const reminderSettings = useReminderStore();
+  const { t } = useLanguageStore();
+
+  useEffect(() => {
+    if (canWrite) {
+      scheduleConfiguredReminder({
+        enabled: reminderSettings.enabled,
+        dayOfWeek: reminderSettings.dayOfWeek,
+        hour: reminderSettings.hour,
+        minute: reminderSettings.minute,
+      }).catch(err => console.error('Error scheduling reminder:', err));
+    }
+  }, [canWrite, reminderSettings.enabled, reminderSettings.dayOfWeek, reminderSettings.hour, reminderSettings.minute]);
+
+  const periodLabel = React.useMemo(() => {
+    const freq = activeResidence?.contribution_frequency ?? 'monthly';
+    if (freq === 'quarterly') {
+      const quarter = Math.ceil(currentMonth / 3);
+      return t(`periods.q${quarter}` as any);
+    }
+    if (freq === 'yearly') return t('dashboard.period_yearly');
+    // Monthly: show the translated month name
+    return t(`periods.m${currentMonth}` as any);
+  }, [activeResidence, t, currentMonth]);
+
+  const getPeriodUnitLabel = useCallback((count: number) => {
+    const freq = activeResidence?.contribution_frequency ?? 'monthly';
+    if (freq === 'quarterly') {
+      return count > 1 ? t('dashboard.period_quarterly_unit_plural') : t('dashboard.period_quarterly_unit');
+    }
+    if (freq === 'yearly') {
+      return count > 1 ? t('dashboard.period_yearly_unit_plural') : t('dashboard.period_yearly_unit');
+    }
+    return count > 1 ? t('dashboard.period_monthly_unit_plural') : t('dashboard.period_monthly_unit');
+  }, [activeResidence, t]);
 
   const {
     stats,
@@ -64,6 +104,39 @@ export default function DashboardScreen() {
     await generateDashboardPDF(allContribs, allApts, allExpenses, stats, activeResidence);
   };
 
+  const sendWhatsAppReminder = (apt: any) => {
+    const phone = apt.phone || apt.whatsapp;
+    if (!phone) {
+      Alert.alert(
+        t('common.error'),
+        t('apartments.whatsapp_missing_phone', { number: apt.number }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.edit'), onPress: () => router.push(`/(app)/apartments/${apt.id}`) }
+        ]
+      );
+      return;
+    }
+
+    const freq = activeResidence?.contribution_frequency ?? 'monthly';
+    const periodsStr = `${apt.unpaidMonthsCount} ${getPeriodUnitLabel(apt.unpaidMonthsCount)}`;
+    
+    const message = `Bonjour ${apt.owner_name || ''},\n\nC'est le syndic de la résidence *${activeResidence?.name || ''}*.\nLe paiement de *${periodsStr}* de cotisation pour l'appartement *${apt.number}* est en attente.\n\nMerci de bien vouloir régulariser le paiement dès que possible.\n\nCordialement.`;
+
+    const cleanedPhone = phone.replace(/[^\d+]/g, '');
+    const url = `whatsapp://send?phone=${cleanedPhone}&text=${encodeURIComponent(message)}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
+      }
+    }).catch(() => {
+      Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
+    });
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -76,14 +149,14 @@ export default function DashboardScreen() {
   if (!activeResidence) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={{ color: Colors.textSecondary }}>Aucune résidence sélectionnée.</Text>
+        <Text style={{ color: Colors.textSecondary }}>{t('dashboard.no_residence')}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Accueil" />
+      <ScreenHeader title={t('dashboard.title')} />
 
       {/* Balance Card — sticky, outside ScrollView */}
       {stats && (
@@ -105,7 +178,7 @@ export default function DashboardScreen() {
             onPress={exportPDF}
           >
             <Ionicons name="document-text-outline" size={14} color={Colors.white} />
-            <Text style={{ color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold }}>Rapport PDF</Text>
+            <Text style={{ color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold }}>{t('dashboard.pdf_report')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -128,11 +201,11 @@ export default function DashboardScreen() {
               <View style={styles.statIcon}>
                 <Ionicons name="wallet" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.statLabel}>Contrib.{'\n'}du mois</Text>
+              <Text style={styles.statLabel}>{t('dashboard.contributions_card', { period: periodLabel })}</Text>
             </View>
             <Text style={styles.statAmount}>{formatAmount(stats?.monthlyContributions ?? 0)}</Text>
             <TouchableOpacity onPress={() => router.push('/(app)/contributions')}>
-              <Text style={styles.seeMore}>Voir contributions →</Text>
+              <Text style={styles.seeMore}>{t('dashboard.see_contributions')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
 
@@ -146,17 +219,17 @@ export default function DashboardScreen() {
               <View style={[styles.statIcon, { backgroundColor: Colors.dangerLight }]}>
                 <Ionicons name="receipt" size={20} color={Colors.danger} />
               </View>
-              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>Dépenses{'\n'}du mois</Text>
+              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>{t('dashboard.expenses_card', { period: periodLabel })}</Text>
             </View>
             <Text style={[styles.statAmount, { color: Colors.danger }]}>{formatAmount(stats?.monthlyExpenses ?? 0)}</Text>
             <TouchableOpacity onPress={() => router.push('/(app)/expenses')}>
-              <Text style={styles.seeMore}>Voir les dépenses →</Text>
+              <Text style={styles.seeMore}>{t('dashboard.see_expenses')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
 
           {/* Paid apartments */}
           <TouchableOpacity
-            style={[styles.statCard, styles.statCardGreen]}
+            style={[styles.statCard, styles.statCardGreen, { width: '35%' }]}
             onPress={() => router.push('/(app)/contributions')}
             activeOpacity={0.85}
           >
@@ -164,7 +237,7 @@ export default function DashboardScreen() {
               <View style={styles.statIcon}>
                 <Ionicons name="people" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.statLabel}>Apparts{'\n'}à jour</Text>
+              <Text style={styles.statLabel}>{t('dashboard.apartments_clean_card')}</Text>
             </View>
             <Text style={styles.statAmount}>
               {stats?.paidApartments ?? 0} / {stats?.totalApartments ?? 0}
@@ -177,7 +250,7 @@ export default function DashboardScreen() {
 
           {/* Unpaid */}
           <TouchableOpacity
-            style={[styles.statCard, styles.statCardDark]}
+            style={[styles.statCard, styles.statCardDark, { width: '59%' }]}
             onPress={() => router.push('/(app)/apartments')}
             activeOpacity={0.85}
           >
@@ -185,39 +258,79 @@ export default function DashboardScreen() {
               <View style={[styles.statIcon, { backgroundColor: Colors.dangerLight }]}>
                 <Ionicons name="alert-circle" size={20} color={Colors.danger} />
               </View>
-              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>Apparts{'\n'}impayés</Text>
+              <Text style={[styles.statLabel, { color: Colors.textSecondary }]}>{t('dashboard.apartments_unpaid_card')}</Text>
             </View>
             {/* Top 3 Unpaid List */}
             {unpaidAptsList && unpaidAptsList.length > 0 && (
               <View style={{ marginTop: 4, gap: 2 }}>
                 {unpaidAptsList.map((a: any) => (
                   <Text key={a.id} style={{ fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1}>
-                    • App. {a.number} : {a.unpaidMonthsCount} mois impayé{a.unpaidMonthsCount > 1 ? 's' : ''}
+                    {t('dashboard.unpaid_detail', { num: a.number, count: a.unpaidMonthsCount, unit: getPeriodUnitLabel(a.unpaidMonthsCount) })}
                   </Text>
                 ))}
               </View>
             )}
 
             <TouchableOpacity onPress={() => router.push('/(app)/apartments')} style={{ marginTop: 'auto' }}>
-              <Text style={styles.seeMore}>Voir la liste →</Text>
+              <Text style={styles.seeMore}>{t('dashboard.see_apartments')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
 
+        {/* Retards de paiement / Relances WhatsApp */}
+        {canWrite && unpaidAptsList && unpaidAptsList.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('dashboard.reminders_pending')}</Text>
+            </View>
+            <View style={{ gap: Spacing.sm }}>
+              {unpaidAptsList.map((apt: any) => (
+                <View key={apt.id} style={styles.opRow}>
+                  <View style={[styles.opIcon, { backgroundColor: Colors.dangerLight }]}>
+                    <Ionicons name="time" size={16} color={Colors.danger} />
+                  </View>
+                  <View style={styles.opInfo}>
+                    <Text style={styles.opLabel}>{t('apartments.label', { number: apt.number })}</Text>
+                    <Text style={styles.opSub}>
+                      {apt.owner_name || t('apartments.owner_unknown')} • {"\u200F"}{t('dashboard.unpaid_status', { count: apt.unpaidMonthsCount, unit: getPeriodUnitLabel(apt.unpaidMonthsCount) })}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#25D366',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: Radius.sm,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      ...Shadow.green
+                    }}
+                    onPress={() => sendWhatsAppReminder(apt)}
+                  >
+                    <Ionicons name="logo-whatsapp" size={16} color={Colors.white} />
+                    <Text style={{ color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold }}>{t('dashboard.remind_btn')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Recent operations */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Dernières opérations</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.recent_operations')}</Text>
             <TouchableOpacity onPress={() => router.push('/(app)/contributions')}>
-              <Text style={styles.seeAll}>Voir tout</Text>
+              <Text style={styles.seeAll}>{t('dashboard.see_all')}</Text>
             </TouchableOpacity>
           </View>
 
           {recentOps && recentOps.length === 0 ? (
             <EmptyState
               icon="receipt-outline"
-              title="Aucune opération"
-              description="Aucune opération récente"
+              title={t('dashboard.empty_operations_title') || 'Aucune opération'}
+              description={t('dashboard.empty_operations') || 'Aucune opération récente'}
             />
           ) : (
             recentOps?.map(op => (

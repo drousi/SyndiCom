@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { useThemeStore } from '../../store/theme.store';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, enUS, ar } from 'date-fns/locale';
+import { useLanguageStore } from '../../store/language.store';
 
 interface DatePickerInputProps {
   label: string;
@@ -20,6 +21,8 @@ export function DatePickerInput({ label, value, onChange, error, formatString = 
   const Colors = useThemeColors();
   const isDark = useThemeStore((s) => s.getIsDark());
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { locale } = useLanguageStore();
+  const dateLocale = locale === 'ar' ? ar : locale === 'en' ? enUS : fr;
 
   const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
@@ -40,7 +43,7 @@ export function DatePickerInput({ label, value, onChange, error, formatString = 
       >
         <Ionicons name="calendar-outline" size={18} color={Colors.textMuted} />
         <Text style={styles.dateText}>
-          {format(value, formatString, { locale: fr })}
+          {format(value, formatString, { locale: dateLocale })}
         </Text>
       </TouchableOpacity>
 
@@ -55,6 +58,7 @@ export function DatePickerInput({ label, value, onChange, error, formatString = 
           textColor={Colors.textPrimary}
           themeVariant={isDark ? 'dark' : 'light'}
           accentColor={Colors.primary}
+          locale={locale}
         />
       )}
     </View>

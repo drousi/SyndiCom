@@ -2,7 +2,7 @@
   "expo": {
     "name": "SyndiCom",
     "slug": "syndicom",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "syndicom",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.syndicom.app",
-      "buildNumber": "9"
+      "buildNumber": "10"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -25,7 +25,7 @@
         "backgroundColor": "#0D1B2A"
       },
       "package": "com.syndicom.app",
-      "versionCode": 9,
+      "versionCode": 10,
       "navigationBar": {
         "backgroundColor": "#0D1B2A",
         "barStyle": "light-content"
@@ -58,7 +58,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#0D1B2A",
           "sounds": [
-            "./assets/sounds/notify_1.wav"
+            "./assets/sounds/notify_1.wav",
+            "./assets/sounds/reminder.wav"
           ]
         }
       ],
@@ -69,6 +70,7 @@
     },
     "extra": {
       "router": {},
+      "supportsRTL": true,
       "eas": {
         "projectId": "1e54d5f1-7dd8-4d07-b3f4-68c26a713d7a"
       }

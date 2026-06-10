@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, Radius, FontSize, FontWeight, Spacing } from '../../constants/theme';
+import { useThemeColors, Radius, FontSize, FontWeight, Spacing, useFontFamily } from '../../constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -36,6 +36,9 @@ export function Input({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const Colors = useThemeColors();
   const styles = useMemo(() => createStyles(Colors), [Colors]);
+  
+  const fontRegular = useFontFamily('regular');
+  const fontMedium = useFontFamily('medium');
 
   const isSecure = secureTextEntry && !isPasswordVisible;
 
@@ -57,11 +60,11 @@ export function Input({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { fontFamily: fontMedium }]}>{label}</Text>}
       <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
-          style={[styles.input, style]}
+          style={[styles.input, { fontFamily: fontRegular }, style]}
           placeholderTextColor={Colors.textMuted}
           secureTextEntry={isSecure}
           {...props}
@@ -76,8 +79,8 @@ export function Input({
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
-      {hint && !error && <Text style={styles.hint}>{hint}</Text>}
+      {error && <Text style={[styles.errorText, { fontFamily: fontMedium }]}>{error}</Text>}
+      {hint && !error && <Text style={[styles.hint, { fontFamily: fontRegular }]}>{hint}</Text>}
     </View>
   );
 }

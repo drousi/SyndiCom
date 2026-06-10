@@ -10,10 +10,11 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { Badge } from '../../../src/components/ui/Badge';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
-import { MONTHS_FR } from '../../../src/constants/app';
+import { MONTHS_FR, getPeriodShortLabels } from '../../../src/constants/app';
 import type { Apartment, Contribution, PaymentDeclaration } from '../../../src/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function MyApartmentScreen() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function MyApartmentScreen() {
 
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t } = useLanguageStore();
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -72,10 +74,14 @@ export default function MyApartmentScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const paidMonths = contributions.filter(c => c.paid).length;
+  const frequency = activeResidence?.contribution_frequency ?? 'monthly';
+  const periodShortLabels = getPeriodShortLabels(frequency);
+  const maxPeriods = periodShortLabels.length;
+
+  const paidPeriods = contributions.filter(c => c.paid).length;
   const totalPaid = contributions.filter(c => c.paid).reduce((s, c) => s + c.amount, 0);
   const monthlyFee = activeResidence?.monthly_fee ?? 0;
-  const balance = totalPaid - (paidMonths * monthlyFee);
+  const balance = totalPaid - (paidPeriods * monthlyFee);
   const pendingDecl = declarations.find(d => d.status === 'pending');
 
   if (loading) {
@@ -90,9 +96,9 @@ export default function MyApartmentScreen() {
     return (
       <View style={styles.noAptContainer}>
         <Ionicons name="home-outline" size={56} color={Colors.textSecondary} />
-        <Text style={styles.noAptTitle}>Aucun appartement lié</Text>
+        <Text style={styles.noAptTitle}>{t('apartments.no_apt_title')}</Text>
         <Text style={styles.noAptText}>
-          Contactez votre gestionnaire pour lier votre compte à votre appartement.
+          {t('apartments.no_apt_text')}
         </Text>
       </View>
     );
@@ -100,7 +106,7 @@ export default function MyApartmentScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Mon appart." />
+      <ScreenHeader title={t('apartments.my_title')} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -117,8 +123,10 @@ export default function MyApartmentScreen() {
           </Text>
           <View style={styles.balanceRow}>
             <View style={styles.balanceStat}>
-              <Text style={styles.balanceStatVal}>{paidMonths}/12</Text>
-              <Text style={styles.balanceStatLab}>mois payés</Text>
+              <Text style={styles.balanceStatVal}>{paidPeriods}/{maxPeriods}</Text>
+              <Text style={styles.balanceStatLab}>
+                {frequency === 'quarterly' ? 'trim. payés' : (frequency === 'yearly' ? 'an. payés' : 'mois payés')}
+              </Text>
             </View>
             <View style={styles.balanceStat}>
               <Text style={styles.balanceStatVal}>{monthlyFee} {activeResidence?.currency}</Text>
@@ -126,9 +134,11 @@ export default function MyApartmentScreen() {
             </View>
             <View style={styles.balanceStat}>
               <Text style={[styles.balanceStatVal, { color: Colors.danger }]}>
-                {Math.max(0, 12 - paidMonths)}
+                {Math.max(0, maxPeriods - paidPeriods)}
               </Text>
-              <Text style={styles.balanceStatLab}>mois dus</Text>
+              <Text style={styles.balanceStatLab}>
+                {frequency === 'quarterly' ? 'trim. dus' : (frequency === 'yearly' ? 'an. dus' : 'mois dus')}
+              </Text>
             </View>
           </View>
         </View>
@@ -155,18 +165,26 @@ export default function MyApartmentScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Monthly grid */}
+        {/* Period grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suivi mensuel {currentYear}</Text>
+          <Text style={styles.sectionTitle}>
+            Suivi {frequency === 'quarterly' ? 'trimestriel' : (frequency === 'yearly' ? 'annuel' : 'mensuel')} {currentYear}
+          </Text>
           <View style={styles.monthGrid}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
-              const contrib = contributions.find(c => c.month === month);
+            {Array.from({ length: maxPeriods }, (_, i) => i + 1).map(period_number => {
+              const contrib = contributions.find(c => c.month === period_number);
               const isPaid = contrib?.paid;
-              const isPast = month <= currentMonth;
-              const isCurrent = month === currentMonth;
+              let currentPeriod = currentMonth;
+              if (frequency === 'quarterly') {
+                currentPeriod = Math.ceil(currentMonth / 3);
+              } else if (frequency === 'yearly') {
+                currentPeriod = 1;
+              }
+              const isPast = period_number <= currentPeriod;
+              const isCurrent = period_number === currentPeriod;
               return (
                 <View
-                  key={month}
+                  key={period_number}
                   style={[
                     styles.monthCell,
                     isPaid && styles.monthCellPaid,
@@ -175,7 +193,7 @@ export default function MyApartmentScreen() {
                   ]}
                 >
                   <Text style={[styles.monthCellText, isPaid && { color: Colors.white }]}>
-                    {MONTHS_FR[month - 1].slice(0, 3)}
+                    {periodShortLabels[period_number - 1]}
                   </Text>
                   {isPaid && <Ionicons name="checkmark" size={10} color={Colors.white} />}
                 </View>

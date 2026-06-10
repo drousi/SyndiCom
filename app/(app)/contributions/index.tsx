@@ -14,19 +14,21 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
-import { MONTHS_FR, MONTHS_SHORT_FR } from '../../../src/constants/app';
+import { MONTHS_FR, MONTHS_SHORT_FR, getPeriodShortLabels } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
 import { getContributionsByResidence, createContribution, updateContribution } from '../../../src/db/repositories/contributions';
 import { useContributionsData } from '../../../src/hooks/useContributionsData';
 import { BalanceCard } from '../../../src/components/ui/BalanceCard';
 import { AddContributionModal } from '../../../src/components/ui/AddContributionModal';
 import { generateDashboardPDF } from '../../../src/services/pdf.service';
+import { useLanguageStore } from '../../../src/store/language.store';
 import type { Apartment, Contribution, Expense } from '../../../src/types';
 
 export default function ContributionsScreen() {
   const { profile, activeResidence, hasPermission } = useAuthStore();
   const queryClient = useQueryClient();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const { t, locale } = useLanguageStore();
 
   const {
     apartments, contributions, expenses, balance, totalExpenses,
@@ -53,6 +55,10 @@ export default function ContributionsScreen() {
 
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+
+  const frequency = activeResidence?.contribution_frequency ?? 'monthly';
+  const periodShortLabels = getPeriodShortLabels(frequency);
+  const maxPeriods = periodShortLabels.length;
 
   const canManage = hasPermission('write');
   const monthlyFee = activeResidence?.monthly_fee || 0;
@@ -130,12 +136,12 @@ export default function ContributionsScreen() {
         setIsCapturing(false);
         await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
-          dialogTitle: 'Partager la matrice des contributions',
+          dialogTitle: t('contributions.share_matrix_title'),
           UTI: 'public.png'
         });
       } catch (e: any) {
         setIsCapturing(false);
-        Alert.alert('Erreur de partage', e.message);
+        Alert.alert(t('common.error'), e.message);
       }
     }, 150);
   };
@@ -247,7 +253,7 @@ export default function ContributionsScreen() {
   }
 
   const aptOptions = apartments.map(a => ({
-    label: `App. ${a.number} - ${a.owner_name || 'Sans résident'}`,
+    label: `${t('apartments.label_abbr', { number: a.number })} - ${a.owner_name || t('apartments.owner_unknown')}`,
     value: a.id
   }));
 
@@ -262,26 +268,26 @@ export default function ContributionsScreen() {
             activeOpacity={0.7}
             onPress={() => handleDoubleTap(`apt_${apt.id}`, () => openPaymentDialog(apt.id))}
           >
-            <Text style={styles.headerCellApt}>App. {apt.number}</Text>
+            <Text style={styles.headerCellApt}>{t('apartments.label_abbr', { number: apt.number })}</Text>
             <Text style={styles.headerCellName} numberOfLines={1}>{apt.owner_name || 'N/A'}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Data Rows (Months) */}
-      {Array.from({ length: 12 }, (_, i) => i + 1).map((month, index) => (
-        <View key={`data_row_${month}`} style={styles.row}>
+      {/* Data Rows (Periods) */}
+      {Array.from({ length: maxPeriods }, (_, i) => i + 1).map((period, index) => (
+        <View key={`data_row_${period}`} style={styles.row}>
           {apartments.map(apt => {
-            const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === month);
+            const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === period);
             const isPaid = contrib && contrib.paid;
             const isPartial = contrib && !contrib.paid && contrib.amount > 0;
             
             return (
               <TouchableOpacity
-                key={`${apt.id}_${month}`}
+                key={`${apt.id}_${period}`}
                 style={[styles.cell, styles.dataCell, index % 2 !== 0 && { backgroundColor: Colors.navyCard }]}
                 activeOpacity={0.7}
-                onPress={() => handleDoubleTap(`${apt.id}_${month}`, () => handleCellDoubleTap(apt, month, contrib))}
+                onPress={() => handleDoubleTap(`${apt.id}_${period}`, () => handleCellDoubleTap(apt, period, contrib))}
               >
                 {isPaid ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.primary, overflow: 'hidden' }}>
@@ -346,22 +352,22 @@ export default function ContributionsScreen() {
           activeOpacity={0.7}
           onPress={() => handleDoubleTap(`apt_${apt.id}`, () => openPaymentDialog(apt.id))}
         >
-          <Text style={styles.headerCellApt}>App. {apt.number}</Text>
+          <Text style={styles.headerCellApt}>{t('apartments.label_abbr', { number: apt.number })}</Text>
           <Text style={styles.headerCellName} numberOfLines={1}>{apt.owner_name || 'N/A'}</Text>
         </TouchableOpacity>
 
-        {/* 12 Months Cells */}
-        {Array.from({ length: 12 }, (_, i) => i + 1).map((month, index) => {
-          const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === month);
+        {/* Period Cells */}
+        {Array.from({ length: maxPeriods }, (_, i) => i + 1).map((period, index) => {
+          const contrib = contributions.find(c => c.apartment_id === apt.id && c.month === period);
           const isPaid = contrib && contrib.paid;
           const isPartial = contrib && !contrib.paid && contrib.amount > 0;
           
           return (
             <TouchableOpacity
-              key={`${apt.id}_${month}`}
+              key={`${apt.id}_${period}`}
               style={[styles.cell, styles.dataCell, index % 2 !== 0 && { backgroundColor: Colors.navyCard }]}
               activeOpacity={0.7}
-              onPress={() => handleDoubleTap(`${apt.id}_${month}`, () => handleCellDoubleTap(apt, month, contrib))}
+              onPress={() => handleDoubleTap(`${apt.id}_${period}`, () => handleCellDoubleTap(apt, period, contrib))}
             >
               {isPaid ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', height: 24, maxWidth: 84, borderRadius: 12, borderWidth: 1, borderColor: Colors.primary, overflow: 'hidden' }}>
@@ -415,7 +421,7 @@ export default function ContributionsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
         }
       >
-        <ScreenHeader title="Contributions" />
+        <ScreenHeader title={t('tabs.contributions')} />
 
       {/* Balance Card */}
       {balance !== null && totalExpenses !== null && (
@@ -439,20 +445,26 @@ export default function ContributionsScreen() {
               <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
                 <Line x1="0" y1="0" x2="100%" y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
               </Svg>
-              <Text style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }}>Appart.</Text>
-              <Text style={{ position: 'absolute', bottom: 4, left: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }}>Mois</Text>
+              <Text style={{ position: 'absolute', top: 4, end: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
+                {t('tabs.apartments')}
+              </Text>
+              <Text style={{ position: 'absolute', bottom: 4, start: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
+                {frequency === 'quarterly' ? t('dashboard.period_quarterly_unit') : (frequency === 'yearly' ? t('dashboard.period_yearly_unit') : t('dashboard.period_monthly_unit'))}
+              </Text>
             </View>
             
-            {/* Month Cells */}
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((month, index) => (
-              <View key={`sticky_month_${month}`} style={[styles.cell, styles.monthCell, { borderLeftWidth: 0 }, index % 2 === 0 && { backgroundColor: Colors.navy }]}>
-                <Text style={styles.monthCellText}>{MONTHS_SHORT_FR[month-1]}</Text>
+            {/* Period Cells */}
+            {periodShortLabels.map((label, index) => (
+              <View key={`sticky_period_${index}`} style={[styles.cell, styles.monthCell, { borderLeftWidth: 0 }, index % 2 === 0 && { backgroundColor: Colors.navy }]}>
+                <Text style={styles.monthCellText}>{label}</Text>
               </View>
             ))}
             
             {/* Total Label */}
             <View style={[styles.cell, styles.totalCell, { borderLeftWidth: 0 }]}>
-              <Text style={styles.totalCellText}>Total</Text>
+              <Text style={styles.totalCellText}>
+                {frequency === 'quarterly' ? t('contributions.total_quarterly').split(' ')[0] : (frequency === 'yearly' ? t('contributions.total_yearly').split(' ')[0] : t('contributions.total_monthly').split(' ')[0])}
+              </Text>
             </View>
           </View>
 
@@ -483,7 +495,7 @@ export default function ContributionsScreen() {
                   {activeResidence?.name}
                 </Text>
                 <Text style={{ fontSize: FontSize.md, color: Colors.textSecondary, marginTop: 4 }}>
-                  Situation des cotisations - {new Date().toLocaleDateString('fr-FR')}
+                  {t('contributions.matrix_situation', { date: new Date().toLocaleDateString(locale === 'ar' ? 'ar-MA' : locale === 'en' ? 'en-US' : 'fr-FR') })}
                 </Text>
               </View>
 
@@ -507,16 +519,22 @@ export default function ContributionsScreen() {
                     <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
                       <Line x1="0" y1="0" x2="100%" y2="100%" stroke={Colors.navyBorder} strokeWidth="1" />
                     </Svg>
-                    <Text style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }}>Appart.</Text>
-                    <Text style={{ position: 'absolute', bottom: 4, left: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }}>Mois</Text>
+                    <Text style={{ position: 'absolute', top: 4, end: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
+                      {t('tabs.apartments')}
+                    </Text>
+                    <Text style={{ position: 'absolute', bottom: 4, start: 6, fontSize: 10, color: Colors.textSecondary, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>
+                      {frequency === 'quarterly' ? t('dashboard.period_quarterly_unit') : (frequency === 'yearly' ? t('dashboard.period_yearly_unit') : t('dashboard.period_monthly_unit'))}
+                    </Text>
                   </View>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month, index) => (
-                    <View key={`capture_month_${month}`} style={[styles.cell, styles.monthCell, { borderLeftWidth: 0 }, index % 2 === 0 && { backgroundColor: Colors.navy }]}>
-                      <Text style={styles.monthCellText}>{MONTHS_SHORT_FR[month-1]}</Text>
+                  {periodShortLabels.map((label, index) => (
+                    <View key={`capture_period_${index}`} style={[styles.cell, styles.monthCell, { borderLeftWidth: 0 }, index % 2 === 0 && { backgroundColor: Colors.navy }]}>
+                      <Text style={styles.monthCellText}>{label}</Text>
                     </View>
                   ))}
                   <View style={[styles.cell, styles.totalCell, { borderLeftWidth: 0 }]}>
-                    <Text style={styles.totalCellText}>Total</Text>
+                    <Text style={styles.totalCellText}>
+                      {frequency === 'quarterly' ? t('contributions.total_quarterly').split(' ')[0] : (frequency === 'yearly' ? t('contributions.total_yearly').split(' ')[0] : t('contributions.total_monthly').split(' ')[0])}
+                    </Text>
                   </View>
                 </View>
 

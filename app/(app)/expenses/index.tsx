@@ -14,11 +14,12 @@ import { BalanceCard } from '../../../src/components/ui/BalanceCard';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow, useFontFamily } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import type { Expense, ExpenseTemplate } from '../../../src/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function ExpensesScreen() {
   const router = useRouter();
@@ -27,6 +28,12 @@ export default function ExpensesScreen() {
   const canDelete = hasPermission('delete');
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t } = useLanguageStore();
+  
+  const fontRegular = useFontFamily('regular');
+  const fontMedium = useFontFamily('medium');
+  const fontSemibold = useFontFamily('semibold');
+  const fontBold = useFontFamily('bold');
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
@@ -67,12 +74,12 @@ export default function ExpensesScreen() {
 
   const handleDelete = (id: string, isTemplate: boolean = false) => {
     Alert.alert(
-      isTemplate ? 'Supprimer le modèle' : 'Supprimer la dépense',
-      'Cette action est irréversible. Continuer ?', 
+      isTemplate ? t('expenses.delete_template_confirm_title') : t('expenses.delete_confirm_title'),
+      t('expenses.delete_confirm_desc'), 
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             if (isTemplate) {
@@ -99,7 +106,7 @@ export default function ExpensesScreen() {
       await updateExpense(id, { status: 'paid' }, profile?.id);
       setTimeout(() => loadData(), 500);
     } catch (e) {
-      Alert.alert('Erreur', 'Impossible de valider le paiement.');
+      Alert.alert(t('common.error'), 'Impossible de valider le paiement.');
     }
   };
 
@@ -121,7 +128,7 @@ export default function ExpensesScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Dépenses" />
+      <ScreenHeader title={t('expenses.title')} />
 
       {/* Balance Card */}
       {balance !== null && (
@@ -141,13 +148,13 @@ export default function ExpensesScreen() {
           style={[styles.tab, activeTab === 'expenses' && styles.tabActive]}
           onPress={() => setActiveTab('expenses')}
         >
-          <Text style={[styles.tabText, activeTab === 'expenses' && styles.tabTextActive]}>Dépenses du mois</Text>
+          <Text style={[styles.tabText, activeTab === 'expenses' && styles.tabTextActive, { fontFamily: fontSemibold }]}>{t('expenses.monthly_expenses')}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'templates' && styles.tabActive]}
           onPress={() => setActiveTab('templates')}
         >
-          <Text style={[styles.tabText, activeTab === 'templates' && styles.tabTextActive]}>Modèles récurrents</Text>
+          <Text style={[styles.tabText, activeTab === 'templates' && styles.tabTextActive, { fontFamily: fontSemibold }]}>{t('expenses.recurring_templates')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,8 +170,8 @@ export default function ExpensesScreen() {
             ListEmptyComponent={
               <EmptyState
                 icon="receipt-outline"
-                title="Aucune dépense"
-                description="Les dépenses enregistrées apparaîtront ici."
+                title={t('expenses.empty_title')}
+                description={t('expenses.empty_desc')}
               />
             }
             renderItem={({ item: expense }) => (
@@ -183,16 +190,16 @@ export default function ExpensesScreen() {
                     {format(new Date(expense.date), 'dd MMM yyyy', { locale: fr })}
                   </Text>
                   {expense.status === 'pending_amount' && (
-                    <Text style={{ color: Colors.warning, fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>Montant à saisir</Text>
+                    <Text style={{ color: Colors.warning, fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>{t('expenses.amount_to_enter')}</Text>
                   )}
                   {expense.status === 'pending_payment' && (
-                    <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>Paiement en attente</Text>
+                    <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>{t('expenses.pending_payment')}</Text>
                   )}
                 </View>
                 <View style={styles.expenseRight}>
                   {expense.status === 'pending_amount' ? (
                     <TouchableOpacity style={[styles.actionBtn, { paddingHorizontal: 16, paddingVertical: 10 }]} onPress={() => router.push(`/(app)/expenses/${expense.id}`)}>
-                      <Text style={[styles.actionBtnText, { fontSize: 12 }]}>Saisir</Text>
+                      <Text style={[styles.actionBtnText, { fontSize: 12 }]}>{t('expenses.enter')}</Text>
                     </TouchableOpacity>
                   ) : (
                     <Text style={[styles.expenseAmount, expense.status === 'pending_payment' && { color: Colors.primary }]}>
@@ -240,8 +247,8 @@ export default function ExpensesScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="calendar-outline"
-              title="Aucun modèle"
-              description="Créez des modèles pour générer automatiquement vos factures récurrentes chaque mois."
+              title={t('expenses.empty_templates')}
+              description={t('expenses.empty_templates_desc')}
             />
           }
           renderItem={({ item: template }) => (
@@ -251,8 +258,8 @@ export default function ExpensesScreen() {
               </View>
               <View style={styles.expenseInfo}>
                 <Text style={styles.expenseType}>{template.title}</Text>
-                <Text style={styles.expenseDesc}>Généré le {template.recurrence_day} de chaque mois</Text>
-                <Badge variant={template.amount_type === 'fixed' ? 'success' : 'warning'} label={template.amount_type === 'fixed' ? 'Montant Fixe' : 'Montant Variable'} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
+                <Text style={styles.expenseDesc}>{t('expenses.generated_on', { day: template.recurrence_day })}</Text>
+                <Badge variant={template.amount_type === 'fixed' ? 'success' : 'warning'} label={template.amount_type === 'fixed' ? t('expenses.fixed_amount') : t('expenses.variable_amount')} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
               </View>
               <View style={styles.expenseRight}>
                   {template.amount_type === 'fixed' && (

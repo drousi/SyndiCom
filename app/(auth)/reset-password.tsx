@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  I18nManager,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -17,11 +18,13 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/store/language.store';
 
 export default function ResetPasswordScreen() {
   const [sent, setSent] = useState(false);
   const router = useRouter();
   const { resetPassword, isLoading, error, clearError } = useAuthStore();
+  const { t } = useLanguageStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
@@ -52,8 +55,8 @@ export default function ResetPasswordScreen() {
       >
         {/* Back */}
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
-          <Text style={styles.backText}>Retour</Text>
+          <Ionicons name={I18nManager.isRTL ? "arrow-forward" : "arrow-back"} size={20} color={Colors.textPrimary} />
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
         {/* Icon */}
@@ -61,20 +64,20 @@ export default function ResetPasswordScreen() {
           <Ionicons name="key-outline" size={36} color={Colors.primary} />
         </View>
 
-        <Text style={styles.title}>Réinitialiser le mot de passe</Text>
+        <Text style={styles.title}>{t('auth.reset_password')}</Text>
         <Text style={styles.subtitle}>
-          Entrez votre email et nous vous enverrons un lien de réinitialisation.
+          {t('auth.reset_password_subtitle')}
         </Text>
 
         {sent ? (
           <View style={styles.successCard}>
             <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
-            <Text style={styles.successTitle}>Email envoyé !</Text>
+            <Text style={styles.successTitle}>{t('auth.email_sent')}</Text>
             <Text style={styles.successText}>
-              Vérifiez votre boîte mail à <Text style={{ fontWeight: FontWeight.bold }}>{getValues('email')}</Text> pour le lien de réinitialisation.
+              {t('auth.check_mailbox', { email: getValues('email') })}
             </Text>
             <Button
-              label="Retour à la connexion"
+              label={t('auth.back_to_login')}
               variant="outline"
               onPress={() => router.replace('/(auth)/login')}
               fullWidth
@@ -94,8 +97,8 @@ export default function ResetPasswordScreen() {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Email"
-                  placeholder="votre@email.com"
+                  label={t('auth.email')}
+                  placeholder={t('auth.email_placeholder') || 'votre@email.com'}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -109,7 +112,7 @@ export default function ResetPasswordScreen() {
             />
 
             <Button
-              label="Envoyer le lien"
+              label={t('auth.send_link')}
               onPress={handleSubmit(onSubmit)}
               isLoading={isLoading}
               fullWidth

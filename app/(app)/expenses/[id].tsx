@@ -15,6 +15,7 @@ import { Input } from '../../../src/components/ui/Input';
 import { DateField } from '../../../src/components/ui/DateField';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function ExpenseFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +25,7 @@ export default function ExpenseFormScreen() {
   const [loading, setLoading] = useState(false);
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const { t } = useLanguageStore();
 
   const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -72,7 +74,7 @@ export default function ExpenseFormScreen() {
       }
       router.back();
     } catch (e) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder la dépense');
+      Alert.alert(t('common.error'), t('expenses.save_error'));
     } finally {
       setLoading(false);
     }
@@ -87,14 +89,14 @@ export default function ExpenseFormScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isNew ? 'Nouvelle dépense' : 'Modifier la dépense'}</Text>
+        <Text style={styles.headerTitle}>{isNew ? t('expenses.form_title_new') : t('expenses.form_title_edit')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Type selector */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Type de dépense *</Text>
+          <Text style={styles.label}>{t('expenses.type_label')}</Text>
           <View style={styles.typeGrid}>
             {EXPENSE_TYPES.map(type => (
               <TouchableOpacity
@@ -108,7 +110,7 @@ export default function ExpenseFormScreen() {
                   color={selectedType === type.key ? Colors.white : Colors.textSecondary}
                 />
                 <Text style={[styles.typeChipText, selectedType === type.key && styles.typeChipTextSelected]}>
-                  {type.label}
+                  {t(`expense_types.${type.key}` as any) || type.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -122,7 +124,7 @@ export default function ExpenseFormScreen() {
           name="amount"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label={`Montant (${activeResidence?.currency ?? 'DH'}) *`}
+              label={t('expenses.amount_field', { currency: activeResidence?.currency ?? 'DH' })}
               placeholder="0.00"
               keyboardType="decimal-pad"
               onChangeText={v => onChange(parseFloat(v) || 0)}
@@ -140,7 +142,7 @@ export default function ExpenseFormScreen() {
           name="date"
           render={({ field: { onChange, value } }) => (
             <DateField
-              label="Date *"
+              label={t('expenses.date_field')}
               value={new Date(value + 'T12:00:00')}
               onChange={(date) => onChange(date.toISOString().split('T')[0])}
               error={errors.date?.message}
@@ -154,8 +156,8 @@ export default function ExpenseFormScreen() {
           name="description"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Description (optionnel)"
-              placeholder="Ex: Facture N°152, Prestataire..."
+              label={t('expenses.description_field')}
+              placeholder={t('expenses.description_placeholder')}
               onChangeText={onChange}
               onBlur={onBlur}
               value={value ?? ''}
@@ -166,7 +168,7 @@ export default function ExpenseFormScreen() {
         />
 
         <Button
-          label={isNew ? 'Enregistrer la dépense' : 'Mettre à jour'}
+          label={isNew ? t('expenses.save_expense') : t('expenses.update_expense')}
           onPress={handleSubmit(onSubmit)}
           isLoading={loading}
           fullWidth

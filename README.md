@@ -4,7 +4,7 @@
 
 **SyndiCom** est une application mobile de gestion de syndic d'immeuble, développée avec Expo React Native.
 
-**Architecture** : Local-first (SQLite) + synchronisation automatique Supabase.
+**Architecture** : Communication directe et en temps réel avec Supabase (Supabase Client `@supabase/supabase-js`).
 
 ---
 
@@ -22,8 +22,6 @@
 ```bash
 cd D:\DEV_PROJECTS\SyndiCom
 npm install
-npx expo install expo-router expo-sqlite expo-secure-store expo-network expo-image-picker expo-file-system expo-constants expo-linking expo-font expo-splash-screen react-native-reanimated react-native-gesture-handler react-native-safe-area-context react-native-screens
-npm install -D babel-plugin-module-resolver
 ```
 
 ---
@@ -43,15 +41,6 @@ npm install -D babel-plugin-module-resolver
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=votre-clé-anon
-```
-
-### 4. Créer le premier utilisateur admin
-1. Aller dans **Authentication > Users** sur Supabase
-2. Inviter un utilisateur
-3. Dans **SQL Editor**, exécuter :
-```sql
-INSERT INTO user_residences (user_id, residence_id, role)
-VALUES ('uuid-de-l-utilisateur', 'uuid-de-la-residence', 'admin');
 ```
 
 ---
@@ -77,15 +66,15 @@ npx expo build:android
 app/
 ├── (auth)/          # Écrans non protégés (login, reset)
 ├── (app)/           # Écrans protégés (tabs)
-│   ├── index.tsx    # Dashboard
+│   ├── index.tsx    # Dashboard (relances WhatsApp, stats rapides)
 │   ├── contributions/
 │   ├── expenses/
 │   ├── apartments/
 │   └── settings/
 src/
-├── db/              # SQLite (local-first)
-│   └── repositories/ # Couche d'accès aux données
-├── supabase/        # Client + moteur de sync
+├── db/              
+│   └── repositories/ # Couche d'accès aux données directe Supabase
+├── supabase/        # Client Supabase
 ├── store/           # État global (Zustand)
 ├── components/ui/   # Composants réutilisables
 ├── schemas/         # Validation Zod
@@ -94,25 +83,6 @@ src/
 supabase/
 └── schema.sql       # Schéma PostgreSQL + RLS
 ```
-
----
-
-## Synchronisation
-
-### Fonctionnement
-1. Toute écriture (création/modification/suppression) est d'abord sauvegardée dans SQLite
-2. Un enregistrement est ajouté dans la table `sync_queue`
-3. Dès qu'une connexion internet est disponible, le moteur de sync traite la queue
-4. En cas d'échec, la sync est retentée jusqu'à 3 fois
-5. Les éléments synchronisés sont marqués comme `synced=1`
-
-### Déclenchement
-- Au lancement de l'app (si réseau disponible)
-- Sur changement de connectivité (via `expo-network`)
-- Manuellement via **Paramètres → Synchroniser maintenant**
-
-### Indicateur de sync
-Un badge discret dans le header indique l'état : syncing / success / error / offline.
 
 ---
 
@@ -136,12 +106,9 @@ Un badge discret dans le header indique l'état : syncing / success / error / of
 
 ---
 
-## Fonctionnalités futures prévues
+## Fonctionnalités principales
 
-- [ ] Export PDF des bilans
-- [ ] Export Excel
-- [ ] Notifications WhatsApp
-- [ ] Rappels de paiement automatiques
-- [ ] Scan de justificatifs (OCR)
-- [ ] Dashboard statistiques avancé
-- [ ] Version web admin
+- Suivi dynamique des cotisations selon la fréquence choisie (mensuelle, trimestrielle, annuelle)
+- Export PDF des bilans complets
+- Relances de paiement semi-automatiques via WhatsApp
+- Rappels locaux de relance sur l'appareil de l'administrateur

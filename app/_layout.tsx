@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import 'react-native-reanimated';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -13,16 +13,83 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import {
+  Cairo_400Regular,
+  Cairo_500Medium,
+  Cairo_600SemiBold,
+  Cairo_700Bold,
+} from '@expo-google-fonts/cairo';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
-import { Platform, Keyboard, LogBox, View } from 'react-native';
+import { Platform, Keyboard, LogBox, View, Text, StyleSheet, I18nManager, DevSettings } from 'react-native';
+import { useLanguageStore } from '../src/store/language.store';
 
 LogBox.ignoreLogs(['setBackgroundColorAsync is not supported']);
 SplashScreen.preventAutoHideAsync();
+
+// Helper: resolve font family from locale + fontWeight
+function resolveFontFamily(isArabic: boolean, weight?: string): string {
+  if (isArabic) {
+    if (weight === 'bold' || weight === '700' || weight === '800' || weight === 'extrabold') return 'Cairo_700Bold';
+    if (weight === '600' || weight === 'semibold') return 'Cairo_600SemiBold';
+    if (weight === '500' || weight === 'medium') return 'Cairo_500Medium';
+    return 'Cairo_400Regular';
+  } else {
+    if (weight === 'bold' || weight === '700' || weight === '800' || weight === 'extrabold') return 'Inter_700Bold';
+    if (weight === '600' || weight === 'semibold') return 'Inter_600SemiBold';
+    if (weight === '500' || weight === 'medium') return 'Inter_500Medium';
+    return 'Inter_400Regular';
+  }
+}
+
+// Monkeypatch global Text to always use the right font per language
+const RN = require('react-native');
+const OriginalText = RN.Text;
+
+const CustomText = React.forwardRef((props: any, ref: any) => {
+  // React hook inside a forwardRef component — safe and reactive to locale changes
+  const locale = useLanguageStore((state) => state.locale);
+  const isArabic = locale === 'ar';
+
+  const flatStyle = StyleSheet.flatten(props.style);
+  const existingFamily: string | undefined = flatStyle?.fontFamily;
+
+  // Always preserve truly custom fonts (e.g. vector icons) that are neither Inter nor Cairo
+  const isThirdPartyFont =
+    existingFamily &&
+    existingFamily !== 'System' &&
+    !existingFamily.startsWith('Inter') &&
+    !existingFamily.startsWith('Cairo');
+
+  if (isThirdPartyFont) {
+    return <OriginalText ref={ref} {...props} />;
+  }
+
+  // Apply Inter globally for FR/EN, Cairo globally for Arabic
+  const fontFamily = resolveFontFamily(isArabic, flatStyle?.fontWeight as string | undefined);
+
+  return (
+    <OriginalText
+      ref={ref}
+      {...props}
+      style={[props.style, { fontFamily, fontWeight: undefined }]}
+    />
+  );
+});
+
+// Inject into react-native module
+try {
+  Object.defineProperty(RN, 'Text', {
+    get() { return CustomText; },
+    configurable: true,
+  });
+} catch (_e) {
+  // Metro may prevent this — the forwardRef above is still the primary path
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +106,10 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Cairo_400Regular,
+    Cairo_500Medium,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
   });
 
   const { isAuthenticated, isLoading, systemRole, profile, loadSession, residences } = useAuthStore();
@@ -50,6 +121,16 @@ export default function RootLayout() {
   const hasNavigated = useRef(false);
   const [appIsReady, setAppIsReady] = useState(false);
   const [minSplashTimeElapsed, setMinSplashTimeElapsed] = useState(false);
+  const { locale, hasChosenLanguage } = useLanguageStore();
+
+  // Synchroniser dynamiquement l'état RTL natif avec la langue sélectionnée
+  useEffect(() => {
+    const isArabic = locale === 'ar';
+    if (I18nManager.isRTL !== isArabic) {
+      I18nManager.allowRTL(isArabic);
+      I18nManager.forceRTL(isArabic);
+    }
+  }, [locale]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -120,8 +201,14 @@ export default function RootLayout() {
     const inApp = segments[0] === '(app)';
 
     if (!isAuthenticated) {
-      if (!inAuth) {
-        router.replace('/(auth)/login');
+      if (!hasChosenLanguage) {
+        if (segments[1] !== 'select-language') {
+          router.replace('/(auth)/select-language');
+        }
+      } else {
+        if (!inAuth || segments[1] === 'select-language') {
+          router.replace('/(auth)/login');
+        }
       }
       hasNavigated.current = false;
       return;

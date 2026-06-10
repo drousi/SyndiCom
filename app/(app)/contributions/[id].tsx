@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Alert, ActivityIndicator, RefreshControl,
+  Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,13 +10,15 @@ import { getContributionsByApartment, toggleContributionPaid, getOrCreateContrib
 import { useAuthStore } from '../../../src/store/auth.store';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
-import { MONTHS_FR } from '../../../src/constants/app';
+import { MONTHS_FR, getPeriodLabels } from '../../../src/constants/app';
 import type { Apartment, Contribution } from '../../../src/types';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function ApartmentContributionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { activeResidence, profile, hasPermission } = useAuthStore();
+  const { t, locale, isRTL } = useLanguageStore();
   const canWrite = hasPermission('write');
 
   const currentYear = new Date().getFullYear();
@@ -45,14 +47,19 @@ export default function ApartmentContributionsScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleToggle = async (month: number) => {
+  const frequency = activeResidence?.contribution_frequency ?? 'monthly';
+  const periodLabels = getPeriodLabels(frequency);
+  const maxPeriods = periodLabels.length;
+  const periods = Array.from({ length: maxPeriods }, (_, i) => i + 1);
+
+  const handleToggle = async (period_number: number) => {
     if (!canWrite || !activeResidence || !id) return;
 
-    const existing = contributions.find(c => c.month === month);
+    const existing = contributions.find(c => c.month === period_number);
     try {
       if (!existing) {
         await getOrCreateContribution(
-          activeResidence.id, id, month, year,
+          activeResidence.id, id, period_number, year,
           activeResidence.monthly_fee ?? 0, profile?.id
         );
       } else {
@@ -64,7 +71,6 @@ export default function ApartmentContributionsScreen() {
     }
   };
 
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const paidTotal = contributions.filter(c => c.paid).reduce((s, c) => s + c.amount, 0);
   const paidCount = contributions.filter(c => c.paid).length;
 
@@ -84,16 +90,16 @@ export default function ApartmentContributionsScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>App. {apartment?.number}</Text>
+          <Text style={styles.headerTitle}>{t('apartments.label_abbr', { number: apartment?.number ?? '' })}</Text>
           {apartment?.owner_name && <Text style={styles.headerSub}>{apartment.owner_name}</Text>}
         </View>
         <View style={styles.yearSelector}>
           <TouchableOpacity onPress={() => setYear(y => y - 1)}>
-            <Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />
+            <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.yearText}>{year}</Text>
           <TouchableOpacity onPress={() => setYear(y => y + 1)}>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textPrimary} />
+            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -101,11 +107,11 @@ export default function ApartmentContributionsScreen() {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Payé</Text>
-          <Text style={styles.statValue}>{paidCount} / 12</Text>
+          <Text style={styles.statLabel}>{t('contributions.status_paid')}</Text>
+          <Text style={styles.statValue}>{paidCount} / {maxPeriods}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Total encaissé</Text>
+          <Text style={styles.statLabel}>{t('contributions.total_collected')}</Text>
           <Text style={[styles.statValue, { color: Colors.primary }]}>
             {paidTotal.toLocaleString('fr-MA', { minimumFractionDigits: 2 })} {activeResidence?.currency ?? 'DH'}
           </Text>
@@ -114,25 +120,31 @@ export default function ApartmentContributionsScreen() {
 
       {/* Month list */}
       <FlatList
-        data={months}
+        data={periods}
         keyExtractor={m => m.toString()}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />}
-        renderItem={({ item: month }) => {
-          const contrib = contributions.find(c => c.month === month);
-          const isPast = year < currentYear || (year === currentYear && month <= new Date().getMonth() + 1);
+        renderItem={({ item: period_number }) => {
+          const contrib = contributions.find(c => c.month === period_number);
+          let currentPeriod = new Date().getMonth() + 1;
+          if (frequency === 'quarterly') {
+            currentPeriod = Math.ceil((new Date().getMonth() + 1) / 3);
+          } else if (frequency === 'yearly') {
+            currentPeriod = 1;
+          }
+          const isPast = year < currentYear || (year === currentYear && period_number <= currentPeriod);
           return (
             <TouchableOpacity
               style={styles.monthRow}
-              onPress={() => handleToggle(month)}
+              onPress={() => handleToggle(period_number)}
               activeOpacity={canWrite ? 0.75 : 1}
               disabled={!canWrite}
             >
               <View style={styles.monthLeft}>
-                <Text style={styles.monthName}>{MONTHS_FR[month - 1]}</Text>
+                <Text style={styles.monthName}>{periodLabels[period_number - 1]}</Text>
                 {contrib?.paid_at && (
                   <Text style={styles.paidDate}>
-                    Payé le {new Date(contrib.paid_at).toLocaleDateString('fr-MA')}
+                    {t('contributions.paid_on', { date: new Date(contrib.paid_at).toLocaleDateString(locale === 'ar' ? 'ar-MA' : locale === 'en' ? 'en-US' : 'fr-MA') })}
                   </Text>
                 )}
                 {contrib?.comment && <Text style={styles.comment}>{contrib.comment}</Text>}
@@ -146,7 +158,7 @@ export default function ApartmentContributionsScreen() {
                   <Text style={styles.noContrib}>–</Text>
                 )}
                 <Badge
-                  label={contrib?.paid ? 'Payé' : isPast ? 'Impayé' : 'À venir'}
+                  label={contrib?.paid ? t('contributions.status_paid') : isPast ? t('contributions.status_unpaid') : t('contributions.status_upcoming')}
                   variant={contrib?.paid ? 'success' : isPast ? 'danger' : 'neutral'}
                   dot
                 />

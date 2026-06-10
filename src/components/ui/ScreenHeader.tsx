@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../constants/theme';
 import { Logo } from './Logo';
 
 interface ScreenHeaderProps {
@@ -14,6 +14,7 @@ export function ScreenHeader({ title, showSettings = true }: ScreenHeaderProps) 
   const Colors = useThemeColors();
   const router = useRouter();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
+  const fontFamily = useFontFamily('bold');
 
   return (
     <View style={styles.header}>
@@ -23,7 +24,7 @@ export function ScreenHeader({ title, showSettings = true }: ScreenHeaderProps) 
       </View>
 
       {/* Center Title */}
-      <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>{title}</Text>
+      <Text style={[styles.headerTitle, { fontFamily, flex: 1, textAlign: 'center' }]}>{title}</Text>
 
       {/* Right Icons */}
       <View style={[styles.headerRight, { width: 80, justifyContent: 'flex-end' }]}>

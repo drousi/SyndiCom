@@ -7,21 +7,23 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { Input } from '../../src/components/ui/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/store/language.store';
 
 export default function ForcePasswordScreen() {
   const router = useRouter();
   const { loadSession, signOut } = useAuthStore();
+  const { t } = useLanguageStore();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!password) {
-      Alert.alert('Erreur', 'Veuillez saisir un mot de passe.');
+      Alert.alert(t('common.error'), t('common.mandatory_field'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+      Alert.alert(t('common.error'), t('settings.confirm_password') + ' mismatch'); // Or generic mismatch
       return;
     }
 
@@ -33,7 +35,7 @@ export default function ForcePasswordScreen() {
 
       // 2. Clear force_password_change flag in profile
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Utilisateur non trouvé');
+      if (!user) throw new Error(t('common.error'));
 
       const { error: profError } = await supabase
         .from('profiles')
@@ -46,16 +48,16 @@ export default function ForcePasswordScreen() {
       await loadSession();
 
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message || 'Une erreur est survenue.');
+      Alert.alert(t('common.error'), e?.message || t('common.error'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
+    Alert.alert(t('settings.sign_out'), t('settings.sign_out_confirm') || 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.sign_out'), style: 'destructive', onPress: () => signOut() },
     ]);
   };
 
@@ -68,14 +70,14 @@ export default function ForcePasswordScreen() {
         <View style={styles.iconWrap}>
           <Ionicons name="lock-closed" size={32} color={Colors.primary} />
         </View>
-        <Text style={styles.title}>Sécurisez votre compte</Text>
+        <Text style={styles.title}>{t('auth.secure_account_title')}</Text>
         <Text style={styles.subtitle}>
-          C'est votre première connexion. Veuillez choisir un nouveau mot de passe personnel pour continuer.
+          {t('auth.secure_account_subtitle')}
         </Text>
 
         <View style={styles.form}>
           <Input
-            label="Nouveau mot de passe"
+            label={t('settings.new_password')}
             placeholder="••••••••"
             secureTextEntry
             value={password}
@@ -83,7 +85,7 @@ export default function ForcePasswordScreen() {
             leftIcon={<Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />}
           />
           <Input
-            label="Confirmez le mot de passe"
+            label={t('settings.confirm_password')}
             placeholder="••••••••"
             secureTextEntry
             value={confirmPassword}
@@ -92,7 +94,7 @@ export default function ForcePasswordScreen() {
           />
 
           <Button
-            label="Valider et continuer"
+            label={t('common.validate')}
             onPress={handleSubmit}
             isLoading={loading}
             style={{ marginTop: Spacing.sm }}
@@ -100,7 +102,7 @@ export default function ForcePasswordScreen() {
         </View>
 
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutBtn}>
-          <Text style={styles.signOutText}>Se déconnecter</Text>
+          <Text style={styles.signOutText}>{t('settings.sign_out')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

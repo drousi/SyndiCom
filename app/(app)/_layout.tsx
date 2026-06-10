@@ -3,17 +3,38 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors, FontSize, FontWeight } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, useFontFamily } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/store/language.store';
+
+import { Text } from 'react-native';
 
 export default function AppLayout() {
   const { isAuthenticated, isLoading, residenceRole } = useAuthStore();
   const insets = useSafeAreaInsets();
   const Colors = useThemeColors();
+  const { t } = useLanguageStore();
+  const fontFamily = useFontFamily('bold');
 
   if (isLoading || !isAuthenticated) return null;
 
   const isResidentOnly = residenceRole === 'resident';
   const canWrite = residenceRole === 'admin' || residenceRole === 'manager';
+
+  const renderTabLabel = (labelKey: string) => ({ color }: { color: string }) => (
+    <Text 
+      style={{
+        color,
+        fontSize: 11,
+        fontFamily,
+        fontWeight: 'bold',
+        marginTop: 2,
+      }}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+    >
+      {t(labelKey as any)}
+    </Text>
+  );
 
   return (
     <Tabs
@@ -29,18 +50,13 @@ export default function AppLayout() {
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
-        tabBarLabelStyle: {
-          fontSize: FontSize.xs,
-          fontWeight: FontWeight.medium,
-          marginTop: 2,
-        },
       }}
     >
       {/* ─── Tabs communs à tous ───────────────────────────────────── */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
+          tabBarLabel: renderTabLabel('tabs.home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -50,7 +66,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="contributions"
         options={{
-          title: 'Contributions',
+          tabBarLabel: renderTabLabel('tabs.contributions'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size} color={color} />
           ),
@@ -61,7 +77,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="expenses"
         options={{
-          title: 'Dépenses',
+          tabBarLabel: renderTabLabel('tabs.expenses'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
           ),
@@ -72,7 +88,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="apartments"
         options={{
-          title: 'Appartements',
+          tabBarLabel: renderTabLabel('tabs.apartments'),
           href: isResidentOnly ? null : '/(app)/apartments',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="business" size={size} color={color} />
@@ -84,7 +100,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="my-apartment"
         options={{
-          title: 'Mon appt.',
+          tabBarLabel: renderTabLabel('tabs.my_apartment'),
           href: !isResidentOnly ? null : '/(app)/my-apartment',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
@@ -96,7 +112,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Paramètres',
+          tabBarLabel: renderTabLabel('tabs.settings'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Switch, LayoutAnimation
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Switch, LayoutAnimation, DevSettings
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,10 @@ import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { useThemeStore } from '../../../src/store/theme.store';
 import { ROLE_LABELS } from '../../../src/constants/app';
+import { useReminderStore } from '../../../src/store/reminder.store';
+import { scheduleTestReminder } from '../../../src/services/notification.service';
+import { useLanguageStore } from '../../../src/store/language.store';
+import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -21,6 +25,9 @@ export default function SettingsScreen() {
   
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setMode);
+  const reminderStore = useReminderStore();
+  const languageStore = useLanguageStore();
+  const { t } = languageStore;
 
   // Local state for smooth switch animation without lag
   const [localIsDark, setLocalIsDark] = useState(themeMode === 'dark');
@@ -110,10 +117,20 @@ export default function SettingsScreen() {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => signOut() },
+    Alert.alert(t('settings.sign_out'), t('settings.sign_out_confirm') || 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.sign_out'), style: 'destructive', onPress: () => signOut() },
     ]);
+  };
+
+  const handleUpdateReminderSettings = (
+    settings: Parameters<typeof reminderStore.updateSettings>[0]
+  ) => {
+    if (activeResidence) {
+      reminderStore.updateSettings(settings, activeResidence.id).catch((err) => {
+        Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres de rappel');
+      });
+    }
   };
 
   return (
@@ -121,13 +138,13 @@ export default function SettingsScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScreenHeader title="Paramètres" showSettings={false} />
+      <ScreenHeader title={t('settings.title')} showSettings={false} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         
         {/* Profile Card */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mon Profil</Text>
+          <Text style={styles.sectionTitle}>{t('settings.my_profile')}</Text>
           <View style={styles.card}>
             {!isEditingProfile ? (
               <>
@@ -141,7 +158,7 @@ export default function SettingsScreen() {
                     <Text style={styles.profileName}>{profile?.full_name ?? 'Utilisateur'}</Text>
                     <Text style={styles.profileEmail}>{profile?.email}</Text>
                     <View style={styles.roleBadge}>
-                      <Text style={styles.roleBadgeText}>{ROLE_LABELS[residenceRole ?? 'resident']}</Text>
+                      <Text style={styles.roleBadgeText}>{t(`roles.${residenceRole ?? 'resident'}` as any)}</Text>
                     </View>
                   </View>
                 </View>
@@ -152,7 +169,7 @@ export default function SettingsScreen() {
                   </View>
                 )}
                 <Button 
-                  label="Modifier mes informations" 
+                  label={t('settings.info_edit')} 
                   variant="outline" 
                   onPress={() => setIsEditingProfile(true)} 
                   style={{ marginTop: Spacing.md }}
@@ -161,13 +178,13 @@ export default function SettingsScreen() {
             ) : (
               <View style={{ gap: Spacing.md }}>
                 <Input
-                  label="Nom complet"
+                  label={t('settings.fullname')}
                   value={fullName}
                   onChangeText={setFullName}
                   leftIcon={<Ionicons name="person-outline" size={18} color={Colors.textMuted} />}
                 />
                 <Input
-                  label="Email"
+                  label={t('settings.email')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
@@ -175,7 +192,7 @@ export default function SettingsScreen() {
                   leftIcon={<Ionicons name="mail-outline" size={18} color={Colors.textMuted} />}
                 />
                 <Input
-                  label="Téléphone"
+                  label={t('settings.phone')}
                   keyboardType="phone-pad"
                   value={phone}
                   onChangeText={setPhone}
@@ -183,7 +200,7 @@ export default function SettingsScreen() {
                 />
                 <View style={styles.actionRow}>
                   <Button 
-                    label="Annuler" 
+                    label={t('common.cancel')} 
                     variant="outline" 
                     onPress={() => {
                       setIsEditingProfile(false);
@@ -194,7 +211,7 @@ export default function SettingsScreen() {
                     style={{ flex: 1 }}
                   />
                   <Button 
-                    label="Sauvegarder" 
+                    label={t('common.save')} 
                     onPress={handleUpdateProfile} 
                     isLoading={loadingProfile}
                     style={{ flex: 1 }}
@@ -207,10 +224,10 @@ export default function SettingsScreen() {
 
         {/* Security / Password */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sécurité</Text>
+          <Text style={styles.sectionTitle}>{t('settings.security')}</Text>
           <View style={styles.card}>
             <Input
-              label="Mot de passe actuel"
+              label={t('settings.current_password')}
               placeholder="••••••••"
               secureTextEntry
               value={currentPassword}
@@ -218,7 +235,7 @@ export default function SettingsScreen() {
               leftIcon={<Ionicons name="key-outline" size={18} color={Colors.textMuted} />}
             />
             <Input
-              label="Nouveau mot de passe"
+              label={t('settings.new_password')}
               placeholder="••••••••"
               secureTextEntry
               value={password}
@@ -226,7 +243,7 @@ export default function SettingsScreen() {
               leftIcon={<Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />}
             />
             <Input
-              label="Confirmer le mot de passe"
+              label={t('settings.confirm_password')}
               placeholder="••••••••"
               secureTextEntry
               value={confirmPassword}
@@ -234,7 +251,7 @@ export default function SettingsScreen() {
               leftIcon={<Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />}
             />
             <Button
-              label="Mettre à jour le mot de passe"
+              label={t('settings.update_password')}
               onPress={handleUpdatePassword}
               isLoading={loadingPassword}
               variant={currentPassword && password ? 'primary' : 'outline'}
@@ -246,7 +263,7 @@ export default function SettingsScreen() {
         {/* Residence selector */}
         {residences.length > 1 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Résidence active</Text>
+            <Text style={styles.sectionTitle}>{t('settings.active_residence')}</Text>
             {residences.map(r => (
               <TouchableOpacity
                 key={r.id}
@@ -264,37 +281,237 @@ export default function SettingsScreen() {
         {/* Administration */}
         {(canManageUsers || canManageResidence) && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Administration</Text>
+            <Text style={styles.sectionTitle}>{t('settings.administration')}</Text>
             {canManageResidence && (
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(app)/settings/residence')}>
                 <Ionicons name="business-outline" size={20} color={Colors.textSecondary} />
-                <Text style={styles.menuText}>Paramètres de la résidence</Text>
-                <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+                <Text style={styles.menuText}>{t('settings.residence_settings')}</Text>
+                <Ionicons name={languageStore.isRTL ? "chevron-back" : "chevron-forward"} size={16} color={Colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canManageUsers && (
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(app)/settings/users')}>
                 <Ionicons name="people-outline" size={20} color={Colors.textSecondary} />
-                <Text style={styles.menuText}>Gestion des utilisateurs</Text>
-                <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+                <Text style={styles.menuText}>{t('settings.users_management')}</Text>
+                <Ionicons name={languageStore.isRTL ? "chevron-back" : "chevron-forward"} size={16} color={Colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         )}
 
+        {/* Rappels de relance (Admin/Gérant) */}
+        {hasPermission('write') && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('settings.reminders_section')}</Text>
+            <View style={styles.card}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, marginRight: Spacing.sm }}>
+                  <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textPrimary }}>
+                    {t('settings.reminders_toggle')}
+                  </Text>
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 }}>
+                    {t('settings.reminders_desc')}
+                  </Text>
+                </View>
+                <Switch
+                  value={reminderStore.enabled}
+                  onValueChange={(val) => handleUpdateReminderSettings({ enabled: val })}
+                  trackColor={{ false: Colors.navyBorder, true: Colors.primarySurface }}
+                  thumbColor={reminderStore.enabled ? Colors.primary : Colors.textMuted}
+                />
+              </View>
+
+              {reminderStore.enabled && (
+                <View style={{ gap: Spacing.md, marginTop: Spacing.sm, borderTopWidth: 1, borderColor: Colors.navyBorder, paddingTop: Spacing.md }}>
+                  {/* Day Picker */}
+                  <View>
+                    <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSecondary, marginBottom: Spacing.xs }}>
+                      {t('settings.reminders_day')}
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {[
+                        t('days.dim'),
+                        t('days.lun'),
+                        t('days.mar'),
+                        t('days.mer'),
+                        t('days.jeu'),
+                        t('days.ven'),
+                        t('days.sam')
+                      ].map((dayName, idx) => {
+                        const dayValue = idx + 1; // 1 = Sun, 2 = Mon, ...
+                        const isSelected = reminderStore.dayOfWeek === dayValue;
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            style={{
+                              paddingVertical: 6,
+                              paddingHorizontal: 12,
+                              borderRadius: Radius.sm,
+                              backgroundColor: isSelected ? Colors.primary : Colors.navyBorder,
+                              borderWidth: 1,
+                              borderColor: isSelected ? Colors.primary : Colors.navyBorder,
+                            }}
+                            onPress={() => handleUpdateReminderSettings({ dayOfWeek: dayValue })}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.textPrimary }}>
+                              {dayName}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Time Picker Controls */}
+                  <View style={{ flexDirection: 'row', gap: Spacing.xl }}>
+                    {/* Hour */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSecondary, marginBottom: Spacing.xs }}>
+                        {t('settings.reminders_hour')}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.navyBorder, borderRadius: Radius.sm, padding: Spacing.xs, justifyContent: 'space-between' }}>
+                        <TouchableOpacity
+                          style={{ padding: 4 }}
+                          onPress={() => {
+                            let newHour = reminderStore.hour - 1;
+                            if (newHour < 0) newHour = 23;
+                            handleUpdateReminderSettings({ hour: newHour });
+                          }}
+                        >
+                          <Ionicons name="remove-circle-outline" size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                        <Text style={{ color: Colors.textPrimary, fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+                          {String(reminderStore.hour).padStart(2, '0')} h
+                        </Text>
+                        <TouchableOpacity
+                          style={{ padding: 4 }}
+                          onPress={() => {
+                            let newHour = reminderStore.hour + 1;
+                            if (newHour > 23) newHour = 0;
+                            handleUpdateReminderSettings({ hour: newHour });
+                          }}
+                        >
+                          <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Minutes */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSecondary, marginBottom: Spacing.xs }}>
+                        {t('settings.reminders_minute')}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.navyBorder, borderRadius: Radius.sm, padding: Spacing.xs, justifyContent: 'space-between' }}>
+                        <TouchableOpacity
+                          style={{ padding: 4 }}
+                          onPress={() => {
+                            let newMin = reminderStore.minute - 15;
+                            if (newMin < 0) newMin = 45;
+                            handleUpdateReminderSettings({ minute: newMin });
+                          }}
+                        >
+                          <Ionicons name="remove-circle-outline" size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                        <Text style={{ color: Colors.textPrimary, fontWeight: FontWeight.bold, fontSize: FontSize.md }}>
+                          {String(reminderStore.minute).padStart(2, '0')} min
+                        </Text>
+                        <TouchableOpacity
+                          style={{ padding: 4 }}
+                          onPress={() => {
+                            let newMin = reminderStore.minute + 15;
+                            if (newMin > 45) newMin = 0;
+                            handleUpdateReminderSettings({ minute: newMin });
+                          }}
+                        >
+                          <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <Button
+                label={t('settings.reminders_test')}
+                variant="outline"
+                onPress={async () => {
+                  await scheduleTestReminder();
+                  Alert.alert(t('settings.reminders_test_scheduled'), t('settings.reminders_test_desc'));
+                }}
+                leftIcon={<Ionicons name="notifications-outline" size={18} color={Colors.primary} />}
+                style={{ marginTop: Spacing.xs }}
+              />
+            </View>
+          </View>
+        )}
+
         {/* Sync section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Système</Text>
+          <Text style={styles.sectionTitle}>{t('settings.system')}</Text>
           <View style={[styles.menuItem, { opacity: 0.7 }]}>
             <Ionicons name="information-circle-outline" size={20} color={Colors.textSecondary} />
-            <Text style={styles.menuText}>Version de l'application</Text>
-            <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary }}>1.0.0</Text>
+            <Text style={styles.menuText}>{t('settings.app_version')}</Text>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary }}>
+              {Constants.expoConfig?.version ?? '1.0.7'}
+            </Text>
+          </View>
+
+          {/* Custom Language Switcher */}
+          <View style={[styles.menuItem, { flexDirection: 'column', alignItems: 'stretch', gap: Spacing.sm }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+              <Ionicons name="language" size={24} color={Colors.primary} />
+              <Text style={styles.menuText}>{t('settings.language')}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+              {[
+                { code: 'fr', label: 'Français' },
+                { code: 'en', label: 'English' },
+                { code: 'ar', label: 'العربية' },
+              ].map((lang) => {
+                const isSelected = languageStore.locale === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 8,
+                      alignItems: 'center',
+                      borderRadius: Radius.sm,
+                      backgroundColor: isSelected ? Colors.primary : Colors.navyBorder,
+                    }}
+                    onPress={() => {
+                      const needsRestart = languageStore.setLocale(lang.code as any);
+                      if (needsRestart) {
+                        Alert.alert(
+                          t('settings.restart_required_title'),
+                          t('settings.restart_required_desc'),
+                          [
+                            {
+                              text: 'OK',
+                              onPress: () => {
+                                if (__DEV__ && DevSettings && typeof DevSettings.reload === 'function') {
+                                  DevSettings.reload();
+                                }
+                              }
+                            }
+                          ]
+                        );
+                      }
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.textPrimary }}>
+                      {lang.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           {/* Custom Theme Switcher */}
           <View style={styles.menuItem}>
             <Ionicons name={localIsDark ? 'moon' : 'sunny'} size={24} color={Colors.primary} />
-            <Text style={styles.menuText}>Mode Sombre</Text>
+            <Text style={styles.menuText}>{t('settings.dark_mode')}</Text>
             <Switch
               value={localIsDark}
               onValueChange={(val) => {
@@ -310,7 +527,7 @@ export default function SettingsScreen() {
         {/* Sign out */}
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-          <Text style={styles.signOutText}>Se déconnecter</Text>
+          <Text style={styles.signOutText}>{t('settings.sign_out')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

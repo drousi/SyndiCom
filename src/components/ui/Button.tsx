@@ -8,7 +8,7 @@ import {
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
-import { useThemeColors, Radius, FontSize, FontWeight, Spacing, Shadow } from '../../constants/theme';
+import { useThemeColors, Radius, FontSize, FontWeight, Spacing, Shadow, useFontFamily } from '../../constants/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 type Size = 'sm' | 'md' | 'lg';
@@ -40,6 +40,7 @@ export function Button({
 }: ButtonProps) {
   const Colors = useThemeColors();
   const styles = useMemo(() => createStyles(Colors), [Colors]);
+  const fontFamily = useFontFamily('semibold');
 
   const variantStyles = {
     primary: { backgroundColor: Colors.primary, ...Shadow.green },
@@ -91,7 +92,12 @@ export function Button({
       ) : (
         <>
           {leftIcon}
-          <Text style={[styles.text, textVariantStyles[variant], textSizeStyles[size], textStyle]}>
+          <Text 
+            style={[styles.text, { fontFamily }, textVariantStyles[variant], textSizeStyles[size], textStyle]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
             {label}
           </Text>
           {rightIcon}

@@ -122,6 +122,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
       });
 
+      // Synchronise le store de rappels avec les settings de la résidence active
+      const { loadFromResidence } = await import('./reminder.store').then(m => m.useReminderStore.getState());
+      loadFromResidence(activeResidence);
+
     } catch (e) {
       console.error('[Auth] loadSession error:', e);
       set({ profile: null, isAuthenticated: false });
@@ -199,6 +203,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setActiveResidence: (residence) => {
     set({ activeResidence: residence, residenceRole: residence.role });
+    import('./reminder.store').then(m => m.useReminderStore.getState().loadFromResidence(residence));
   },
 
   clearError: () => set({ error: null }),

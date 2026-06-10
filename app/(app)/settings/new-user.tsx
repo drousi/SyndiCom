@@ -12,6 +12,7 @@ import { SelectInput } from '../../../src/components/ui/SelectInput';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { secondarySupabase } from '../../../src/supabase/secondary';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 const newUserSchema = z.object({
   fullName: z.string().min(2, 'Le nom doit faire au moins 2 caractères'),
@@ -27,6 +28,7 @@ export default function NewUserScreen() {
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
   const { activeResidence, hasPermission } = useAuthStore();
+  const { t } = useLanguageStore();
   const [loading, setLoading] = useState(false);
 
   const { control, handleSubmit, formState: { errors } } = useForm<NewUserForm>({
@@ -37,7 +39,7 @@ export default function NewUserScreen() {
   if (!hasPermission('manageUsers')) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: Colors.danger, padding: 20 }}>Accès refusé</Text>
+        <Text style={{ color: Colors.danger, padding: 20 }}>{t('new_user.access_denied')}</Text>
       </View>
     );
   }
@@ -66,7 +68,7 @@ export default function NewUserScreen() {
             .eq('email', data.email)
             .single();
 
-          if (!existingUser) throw new Error("Profil introuvable pour cet email.");
+          if (!existingUser) throw new Error(t('new_user.error_not_found'));
           newUserId = existingUser.id;
         } else {
           throw signUpError;
@@ -95,12 +97,12 @@ export default function NewUserScreen() {
           
         if (resError) throw resError;
 
-        Alert.alert('Succès', 'Utilisateur créé et ajouté à la résidence !');
+        Alert.alert(t('common.success'), t('new_user.success'));
         router.back();
       }
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Erreur', e?.message || 'Impossible de créer l\'utilisateur');
+      Alert.alert(t('common.error'), e?.message || t('new_user.error_create'));
     } finally {
       setLoading(false);
     }
@@ -112,7 +114,7 @@ export default function NewUserScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nouvel Utilisateur</Text>
+        <Text style={styles.headerTitle}>{t('new_user.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -122,8 +124,8 @@ export default function NewUserScreen() {
           name="fullName"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Nom complet *"
-              placeholder="Jean Dupont"
+              label={t('new_user.fullname_label')}
+              placeholder={t('new_user.fullname_placeholder')}
               onChangeText={onChange}
               onBlur={onBlur}
               value={value}
@@ -138,8 +140,8 @@ export default function NewUserScreen() {
           name="email"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Email *"
-              placeholder="jean@example.com"
+              label={t('new_user.email_label')}
+              placeholder={t('new_user.email_placeholder')}
               keyboardType="email-address"
               autoCapitalize="none"
               onChangeText={onChange}
@@ -156,8 +158,8 @@ export default function NewUserScreen() {
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Mot de passe provisoire *"
-              placeholder="Min. 6 caractères"
+              label={t('new_user.password_label')}
+              placeholder={t('new_user.password_placeholder')}
               secureTextEntry
               onChangeText={onChange}
               onBlur={onBlur}
@@ -173,11 +175,11 @@ export default function NewUserScreen() {
           name="role"
           render={({ field: { onChange, value } }) => (
             <SelectInput
-              label="Rôle dans la résidence *"
+              label={t('new_user.role_label')}
               options={[
-                { label: 'Résident', value: 'resident' },
-                { label: 'Gérant (Manager)', value: 'manager' },
-                { label: 'Administrateur', value: 'admin' },
+                { label: t('new_user.role_resident'), value: 'resident' },
+                { label: t('new_user.role_manager'), value: 'manager' },
+                { label: t('new_user.role_admin'), value: 'admin' },
               ]}
               selectedValue={value}
               onSelect={(val) => onChange(val)}
@@ -186,7 +188,7 @@ export default function NewUserScreen() {
         />
 
         <Button
-          label="Créer l'utilisateur"
+          label={t('new_user.create_btn')}
           onPress={handleSubmit(onSubmit)}
           isLoading={loading}
           style={{ marginTop: Spacing.xl }}

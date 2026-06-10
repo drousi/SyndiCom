@@ -12,13 +12,17 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { updateResidence } from '../../../src/db/repositories/residences';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
+import { SelectInput } from '../../../src/components/ui/SelectInput';
+import { getFrequencies } from '../../../src/constants/app';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 const schema = z.object({
   name: z.string().min(2, 'Nom requis'),
   address: z.string().optional(),
   currency: z.string().min(1, 'Devise requise'),
   monthly_fee: z.coerce.number().min(0, 'Montant invalide'),
+  contribution_frequency: z.enum(['monthly', 'quarterly', 'yearly']),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -29,6 +33,7 @@ export default function ResidenceSettingsScreen() {
   const [loading, setLoading] = useState(false);
 
   const Colors = useThemeColors();
+  const { t, isRTL } = useLanguageStore();
   const styles = useMemo(() => createStyles(Colors), [Colors]);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -38,6 +43,7 @@ export default function ResidenceSettingsScreen() {
       address: activeResidence?.address ?? '',
       currency: activeResidence?.currency ?? 'DH',
       monthly_fee: activeResidence?.monthly_fee ?? 0,
+      contribution_frequency: activeResidence?.contribution_frequency ?? 'monthly',
     },
   });
 
@@ -50,12 +56,13 @@ export default function ResidenceSettingsScreen() {
         address: data.address || null,
         currency: data.currency,
         monthly_fee: data.monthly_fee,
+        contribution_frequency: data.contribution_frequency,
       }, profile?.id);
 
       // Refresh stores in background to avoid unmounting the app layout
       await loadSession(true);
 
-      Alert.alert('Succès', 'Paramètres mis à jour.', [
+      Alert.alert(t('common.success'), t('settings.residence.save_success'), [
         { 
           text: 'OK', 
           onPress: () => {
@@ -68,7 +75,7 @@ export default function ResidenceSettingsScreen() {
         }
       ]);
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message ?? 'Impossible de mettre à jour');
+      Alert.alert(t('common.error'), e?.message ?? 'Impossible de mettre à jour');
     } finally {
       setLoading(false);
     }
@@ -83,22 +90,22 @@ export default function ResidenceSettingsScreen() {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(app)/settings')}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Paramètres de la résidence</Text>
+        <Text style={styles.headerTitle}>{t('settings.residence_settings')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Informations générales</Text>
+          <Text style={styles.sectionTitle}>{t('settings.residence.general_info')}</Text>
 
           <Controller
             control={control}
             name="name"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Nom de la résidence *"
+                label={t('settings.residence.residence_name')}
                 placeholder="Ex: Résidence Al Akahway"
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -114,7 +121,7 @@ export default function ResidenceSettingsScreen() {
             name="address"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Adresse (optionnel)"
+                label={t('settings.residence.address')}
                 placeholder="Ex: Hay Hassani, Casablanca"
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -126,8 +133,8 @@ export default function ResidenceSettingsScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Finances</Text>
-          <Text style={styles.sectionSub}>Ces paramètres seront utilisés pour le calcul des soldes.</Text>
+          <Text style={styles.sectionTitle}>{t('settings.residence.finances')}</Text>
+          <Text style={styles.sectionSub}>{t('settings.residence.finances_sub')}</Text>
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -136,7 +143,7 @@ export default function ResidenceSettingsScreen() {
                 name="monthly_fee"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
-                    label="Cotisation mensuelle *"
+                    label={t('settings.residence.fee')}
                     placeholder="200"
                     keyboardType="decimal-pad"
                     onChangeText={v => onChange(parseFloat(v) || 0)}
@@ -154,7 +161,7 @@ export default function ResidenceSettingsScreen() {
                 name="currency"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
-                    label="Devise"
+                    label={t('settings.residence.currency')}
                     placeholder="DH"
                     onChangeText={onChange}
                     onBlur={onBlur}
@@ -165,10 +172,34 @@ export default function ResidenceSettingsScreen() {
               />
             </View>
           </View>
+
+          <View style={{ marginTop: Spacing.sm }}>
+            <Controller
+              control={control}
+              name="contribution_frequency"
+              render={({ field: { onChange, value } }) => (
+                <View>
+                  <SelectInput
+                    label={t('settings.residence.frequency')}
+                    options={getFrequencies().map(f => ({ label: f.label, value: f.key }))}
+                    selectedValue={value}
+                    onSelect={onChange}
+                  />
+                  <View style={styles.warningBox}>
+                    <Ionicons name="warning-outline" size={16} color="#E28743" style={{ marginTop: 1 }} />
+                    <Text style={styles.warningText}>
+                      <Text style={{ fontWeight: 'bold' }}>{t('settings.residence.warning_title')} </Text>
+                      {t('settings.residence.warning_desc')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            />
+          </View>
         </View>
 
         <Button
-          label="Enregistrer les modifications"
+          label={t('common.save')}
           onPress={handleSubmit(onSubmit)}
           isLoading={loading}
           fullWidth
@@ -203,4 +234,22 @@ const createStyles = (Colors: any) => StyleSheet.create({
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
   sectionSub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.sm },
   row: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(226, 135, 67, 0.1)',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: '#E28743',
+    marginTop: Spacing.sm,
+  },
+  warningText: {
+    fontSize: FontSize.xs,
+    color: '#E28743',
+    fontWeight: FontWeight.medium,
+    lineHeight: 16,
+    flex: 1,
+  },
 });

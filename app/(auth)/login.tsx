@@ -19,11 +19,13 @@ import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/store/language.store';
 
 export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { t } = useLanguageStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
@@ -56,13 +58,13 @@ export default function LoginScreen() {
         {/* Header / Logo */}
         <View style={styles.header}>
           <Logo width={200} height={55} />
-          <Text style={styles.tagline}>La gestion de syndic simplifiée</Text>
+          <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>Connexion</Text>
-          <Text style={styles.subtitle}>Connectez-vous à votre espace</Text>
+          <Text style={styles.title}>{t('auth.login_title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.login_subtitle')}</Text>
 
           {/* Global error */}
           {error && (
@@ -78,8 +80,8 @@ export default function LoginScreen() {
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Email"
-                placeholder="votre@email.com"
+                label={t('auth.email')}
+                placeholder={t('auth.email_placeholder') || 'votre@email.com'}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -98,8 +100,8 @@ export default function LoginScreen() {
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Mot de passe"
-                placeholder="••••••••"
+                label={t('auth.password')}
+                placeholder={t('auth.password_placeholder') || '••••••••'}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 onChangeText={onChange}
@@ -124,12 +126,12 @@ export default function LoginScreen() {
             style={styles.forgotLink}
             onPress={() => router.push('/(auth)/reset-password')}
           >
-            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+            <Text style={styles.forgotText}>{t('auth.forgot_password')}</Text>
           </TouchableOpacity>
 
           {/* Submit */}
           <Button
-            label="Se connecter"
+            label={t('auth.login')}
             onPress={handleSubmit(onSubmit)}
             isLoading={isLoading}
             fullWidth
@@ -139,9 +141,9 @@ export default function LoginScreen() {
 
           {/* Register Link */}
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Pas encore de compte ? </Text>
+            <Text style={styles.registerText}>{t('auth.no_account')}</Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.registerLink}>S'inscrire</Text>
+              <Text style={styles.registerLink}>{t('auth.register')}</Text>
             </TouchableOpacity>
           </View>
         </View>

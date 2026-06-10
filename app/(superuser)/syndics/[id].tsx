@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, I18nManager
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,12 +9,14 @@ import { supabase } from '../../../src/supabase/client';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { ROLE_LABELS } from '../../../src/constants/app';
 import type { UserResidenceWithProfile, Residence } from '../../../src/types';
+import { useLanguageStore } from '../../../src/store/language.store';
 import { ActionSheet, ActionSheetOption } from '../../../src/components/ui/ActionSheet';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 
 export default function SyndicDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useLanguageStore();
   const [residence, setResidence] = useState<Residence | null>(null);
   const [users, setUsers] = useState<UserResidenceWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +148,7 @@ export default function SyndicDetailsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.white} />
+          <Ionicons name={I18nManager.isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.white} />
         </TouchableOpacity>
         <View style={{ flex: 1, paddingHorizontal: Spacing.md }}>
           <Text style={styles.headerTitle} numberOfLines={1}>{residence?.name}</Text>
@@ -195,7 +197,7 @@ export default function SyndicDetailsScreen() {
                 item.role === 'admin' && { color: Colors.danger },
                 item.role === 'manager' && { color: Colors.warning },
               ]}>
-                {ROLE_LABELS[item.role] || item.role}
+                {t(`roles.${item.role}` as any) || item.role}
               </Text>
               <Ionicons 
                 name="chevron-down" 

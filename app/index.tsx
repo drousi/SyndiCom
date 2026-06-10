@@ -84,8 +84,8 @@ export default function Index() {
 
         {/* App name — same two-tone style as ScreenHeader */}
         <Text style={{ fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -1 }}>
-          <Text style={{ color: Colors.textPrimary }}>Syndi</Text>
-          <Text style={{ color: '#81ae45' }}>Com</Text>
+          <Text style={{ color: Colors.textPrimary, fontWeight: FontWeight.bold }}>Syndi</Text>
+          <Text style={{ color: '#81ae45', fontWeight: FontWeight.bold }}>Com</Text>
         </Text>
 
         {/* Subtle tagline */}

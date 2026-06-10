@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth.store';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../constants/theme';
 import { createContribution, updateContribution } from '../../db/repositories/contributions';
 import { Apartment, Contribution } from '../../types';
 import { SelectInput } from './SelectInput';
 import { DateField } from './DateField';
 import { Button } from './Button';
+import { useLanguageStore } from '../../store/language.store';
 
 interface AddContributionModalProps {
   visible: boolean;
@@ -41,107 +42,118 @@ export function AddContributionModal({
   preselectedAptId,
 }: AddContributionModalProps) {
   const { profile, activeResidence } = useAuthStore();
-  const Colors = useThemeColors();
-  const styles = React.useMemo(() => createStyles(Colors), [Colors]);
-
   const [selectedAptId, setSelectedAptId] = useState<string>('');
-  const [amount, setAmount] = useState<number>(0);
-  const [payDate, setPayDate] = useState<string>('');
+  const [amount, setAmount] = useState<number>(monthlyFee);
+  const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      setSelectedAptId(preselectedAptId || (apartments.length > 0 ? apartments[0].id : ''));
-      setAmount(monthlyFee);
-      setPayDate(new Date().toISOString().split('T')[0]);
-    }
-  }, [visible, preselectedAptId, apartments, monthlyFee]);
+  const Colors = useThemeColors();
+  const styles = createStyles(Colors);
+  const { t } = useLanguageStore();
+  
+  const fontRegular = useFontFamily('regular');
+  const fontMedium = useFontFamily('medium');
+  const fontBold = useFontFamily('bold');
 
-  const aptOptions = apartments.map((a) => ({
-    label: `Appartement ${a.number} ${a.owner_name ? `(${a.owner_name})` : ''}`,
-    value: a.id,
+  useEffect(() => {
+    if (preselectedAptId) {
+      setSelectedAptId(preselectedAptId);
+    } else if (apartments.length > 0) {
+      setSelectedAptId(apartments[0].id);
+    }
+  }, [preselectedAptId, apartments]);
+
+  useEffect(() => {
+    setAmount(monthlyFee);
+  }, [monthlyFee]);
+
+  const aptOptions = apartments.map((apt) => ({
+    label: t('apartments.label', { number: apt.number }),
+    value: apt.id,
   }));
 
   const allocatePayment = async () => {
-    if (!activeResidence || !profile) return;
-    if (!selectedAptId || amount <= 0) {
-      Alert.alert('Erreur', 'Sélectionnez un appartement et saisissez un montant valide.');
-      return;
-    }
-
+    if (!selectedAptId || amount <= 0 || !activeResidence || !profile) return;
     setIsSubmitting(true);
+
     try {
       let remainingAmount = amount;
-      const aptContribs = contributions.filter((c) => c.apartment_id === selectedAptId);
+      const apt = apartments.find((a) => a.id === selectedAptId);
+      if (!apt) return;
 
-      for (let month = 1; month <= 12; month++) {
-        if (remainingAmount <= 0) break;
+      const frequency = activeResidence.contribution_frequency ?? 'monthly';
+      const periodsPerYear = frequency === 'quarterly' ? 4 : frequency === 'yearly' ? 1 : 12;
+      const maxPeriods = periodsPerYear;
 
-        const contrib = aptContribs.find((c) => c.month === month);
-        const currentPaid = contrib ? contrib.amount : 0;
+      const aptContributions = contributions.filter((c) => c.apartment_id === selectedAptId);
+      
+      let nextPeriod = 1;
+      let nextYear = currentYear;
 
-        // Si le mois est déjà marqué comme "payé", on ne réclame pas la différence
-        const needed = contrib && contrib.paid ? 0 : monthlyFee - currentPaid;
-
-        if (needed > 0) {
-          const toAllocate = Math.min(needed, remainingAmount);
-          const newTotal = currentPaid + toAllocate;
-          const isFullyPaid = newTotal >= monthlyFee;
-
-          if (contrib) {
-            await updateContribution(
-              contrib.id,
-              {
-                amount: newTotal,
-                paid: isFullyPaid,
-                paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
-              },
-              profile.id
-            );
-          } else {
-            await createContribution({
-              residence_id: activeResidence.id,
-              apartment_id: selectedAptId,
-              month,
-              year: currentYear,
-              amount: toAllocate,
-              paid: isFullyPaid,
-              paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
-              comment: null,
-              created_by: profile.id,
-            });
-          }
-
-          remainingAmount -= toAllocate;
+      if (aptContributions.length > 0) {
+        const sorted = [...aptContributions].sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return b.month - a.month;
+        });
+        const lastContrib = sorted[0];
+        
+        nextPeriod = lastContrib.month + 1;
+        nextYear = lastContrib.year;
+        if (nextPeriod > maxPeriods) {
+          nextPeriod = 1;
+          nextYear++;
         }
       }
 
-      // Handle surplus -> rollovers
-      if (remainingAmount > 0) {
-        let nextYear = currentYear + 1;
-        let nextMonth = 1;
+      while (remainingAmount > 0) {
+        const existing = aptContributions.find(
+          (c) => c.year === nextYear && c.month === nextPeriod
+        );
 
-        // Safety limit to max 5 years ahead
-        while (remainingAmount > 0 && nextYear < currentYear + 5) {
-          const toAllocate = Math.min(monthlyFee, remainingAmount);
+        if (existing) {
+          const needed = monthlyFee - existing.amount;
+          if (needed <= 0) {
+            nextPeriod++;
+            if (nextPeriod > maxPeriods) {
+              nextPeriod = 1;
+              nextYear++;
+            }
+            continue;
+          }
+
+          const toAllocate = Math.min(remainingAmount, needed);
+          const isFullyPaid = existing.amount + toAllocate >= monthlyFee;
+          await updateContribution(existing.id, {
+            amount: existing.amount + toAllocate,
+            paid: isFullyPaid,
+            paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
+          });
+          remainingAmount -= toAllocate;
+
+          nextPeriod++;
+          if (nextPeriod > maxPeriods) {
+            nextPeriod = 1;
+            nextYear++;
+          }
+        } else {
+          const toAllocate = Math.min(remainingAmount, monthlyFee);
           const isFullyPaid = toAllocate >= monthlyFee;
-
           await createContribution({
             residence_id: activeResidence.id,
             apartment_id: selectedAptId,
-            month: nextMonth,
             year: nextYear,
+            month: nextPeriod,
             amount: toAllocate,
             paid: isFullyPaid,
             paid_at: isFullyPaid ? new Date(payDate).toISOString() : null,
-            comment: 'Excédent',
+            comment: null,
             created_by: profile.id,
           });
           remainingAmount -= toAllocate;
 
-          nextMonth++;
-          if (nextMonth > 12) {
-            nextMonth = 1;
+          nextPeriod++;
+          if (nextPeriod > maxPeriods) {
+            nextPeriod = 1;
             nextYear++;
           }
         }
@@ -150,7 +162,7 @@ export function AddContributionModal({
       onSuccess(amount);
       onClose();
     } catch (e: any) {
-      Alert.alert('Erreur', e.message);
+      Alert.alert(t('common.error'), e.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -160,10 +172,10 @@ export function AddContributionModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Ajouter un paiement</Text>
+          <Text style={[styles.modalTitle, { fontFamily: fontBold }]}>{t('contributions.add_payment')}</Text>
 
           <SelectInput
-            label="Appartement"
+            label={t('contributions.apartment_label')}
             options={aptOptions}
             selectedValue={selectedAptId}
             onSelect={setSelectedAptId}
@@ -171,7 +183,7 @@ export function AddContributionModal({
 
           <View style={{ marginBottom: Spacing.xl, marginTop: Spacing.md }}>
             <DateField
-              label="Date du paiement"
+              label={t('contributions.payment_date')}
               value={payDate ? new Date(payDate + 'T12:00:00') : new Date()}
               onChange={(date) => {
                 setPayDate(date.toISOString().split('T')[0]);
@@ -181,7 +193,7 @@ export function AddContributionModal({
           </View>
 
           <View style={{ marginBottom: Spacing.xl }}>
-            <Text style={styles.inputLabel}>Montant (DH)</Text>
+            <Text style={[styles.inputLabel, { fontFamily: fontMedium }]}>{t('contributions.amount_label')}</Text>
             <View style={styles.amountControl}>
               <TouchableOpacity
                 style={styles.amountBtn}
@@ -191,7 +203,7 @@ export function AddContributionModal({
               </TouchableOpacity>
 
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { fontFamily: fontRegular }]}
                 value={amount.toString()}
                 onChangeText={(val) => setAmount(parseInt(val) || 0)}
                 keyboardType="numeric"
@@ -204,8 +216,8 @@ export function AddContributionModal({
           </View>
 
           <View style={styles.modalActions}>
-            <Button label="Annuler" variant="outline" onPress={onClose} style={{ flex: 1 }} />
-            <Button label="Valider" onPress={allocatePayment} isLoading={isSubmitting} style={{ flex: 1 }} />
+            <Button label={t('common.cancel')} variant="outline" onPress={onClose} style={{ flex: 1 }} />
+            <Button label={t('common.validate')} onPress={allocatePayment} isLoading={isSubmitting} style={{ flex: 1 }} />
           </View>
         </View>
       </KeyboardAvoidingView>

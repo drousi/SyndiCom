@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 const schema = z.object({
   amount: z.coerce.number().positive('Montant doit être > 0'),
@@ -27,6 +28,7 @@ export default function DeclarePaymentScreen() {
   const [loading, setLoading] = useState(false);
   const [aptId, setAptId] = useState<string | null>(null);
   const [monthlyFee, setMonthlyFee] = useState(0);
+  const { t } = useLanguageStore();
 
   const { control, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -172,7 +174,7 @@ export default function DeclarePaymentScreen() {
 
         {!aptId && (
           <Text style={styles.noAptError}>
-            Votre compte n'est pas lié à un appartement. Contactez votre gestionnaire.
+          {t('apartments.no_apt_declare')}
           </Text>
         )}
       </ScrollView>

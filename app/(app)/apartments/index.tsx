@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../../src/supabase/client';
@@ -15,6 +15,7 @@ import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
 import { DropdownMenu, DropdownOption } from '../../../src/components/ui/DropdownMenu';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
+import { useLanguageStore } from '../../../src/store/language.store';
 import type { Apartment } from '../../../src/types';
 
 export default function ApartmentsScreen() {
@@ -23,6 +24,7 @@ export default function ApartmentsScreen() {
   const canWrite = hasPermission('write');
   const canDelete = hasPermission('delete');
   const Colors = useThemeColors();
+  const { t } = useLanguageStore();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -47,14 +49,44 @@ export default function ApartmentsScreen() {
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
+  const sendGenericWhatsAppReminder = (apt: Apartment) => {
+    const phone = apt.phone || apt.whatsapp;
+    if (!phone) {
+      Alert.alert(
+        'Coordonnées manquantes',
+        `Aucun numéro de téléphone ou WhatsApp n'est configuré pour l'appartement ${apt.number}.`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: t('common.edit'), onPress: () => router.push(`/(app)/apartments/${apt.id}`) }
+        ]
+      );
+      return;
+    }
+    
+    const message = `Bonjour ${apt.owner_name || ''},\n\nC'est le syndic de la résidence *${activeResidence?.name || ''}*.\nNous vous contactons pour le suivi des cotisations de l'appartement *${apt.number}*.\n\nMerci de bien vouloir régulariser vos cotisations en retard dès que possible ou de nous envoyer le justificatif si c'est déjà fait.\n\nCordialement.`;
+
+    const cleanedPhone = phone.replace(/[^\d+]/g, '');
+    const url = `whatsapp://send?phone=${cleanedPhone}&text=${encodeURIComponent(message)}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
+      }
+    }).catch(() => {
+      Linking.openURL(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`);
+    });
+  };
+
   const handleDelete = (id: string, number: string) => {
     Alert.alert(
-      `Désactiver App. ${number}`,
-      'L\'appartement sera marqué comme inactif. Les données seront conservées.',
+      t('apartments.deactivate_confirm_title', { number }),
+      t('apartments.deactivate_confirm_desc'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Désactiver',
+          text: t('common.deactivate'),
           style: 'destructive',
           onPress: async () => {
             await deleteApartment(id, profile?.id);
@@ -77,7 +109,7 @@ export default function ApartmentsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Appartements" />
+      <ScreenHeader title={t('apartments.title')} />
 
       <FlatList
         data={apartments}
@@ -88,13 +120,13 @@ export default function ApartmentsScreen() {
         ListEmptyComponent={
           <EmptyState
             icon="business-outline"
-            title="Aucun appartement"
-            description="Commencez par ajouter les appartements de votre résidence."
+            title={t('apartments.empty_title')}
+            description={t('apartments.empty_desc')}
           >
             {canWrite && (
               <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(app)/apartments/new')}>
                 <Ionicons name="add" size={16} color={Colors.white} />
-                <Text style={styles.emptyBtnText}>Ajouter un appartement</Text>
+                <Text style={styles.emptyBtnText}>{t('apartments.add_apartment')}</Text>
               </TouchableOpacity>
             )}
           </EmptyState>
@@ -104,14 +136,21 @@ export default function ApartmentsScreen() {
 
           if (canWrite) {
             menuOptions.push({
-              label: 'Modifier',
+              label: t('common.edit'),
               icon: 'pencil-outline',
               onPress: () => router.push(`/(app)/apartments/${apt.id}`),
             });
+            if (apt.active) {
+              menuOptions.push({
+                label: t('apartments.whatsapp_remind'),
+                icon: 'logo-whatsapp',
+                onPress: () => sendGenericWhatsAppReminder(apt),
+              });
+            }
           }
           if (canDelete && apt.active) {
             menuOptions.push({
-              label: 'Désactiver',
+              label: t('common.deactivate'),
               icon: 'power-outline',
               destructive: true,
               onPress: () => handleDelete(apt.id, apt.number),
@@ -126,12 +165,12 @@ export default function ApartmentsScreen() {
                 </Text>
               </View>
               <View style={styles.aptInfo}>
-                <Text style={styles.aptOwner}>{apt.owner_name ?? 'Propriétaire inconnu'}</Text>
-                {apt.floor != null && <Text style={styles.aptDetail}>Étage {apt.floor}</Text>}
+                <Text style={styles.aptOwner}>{apt.owner_name ?? t('apartments.owner_unknown')}</Text>
+                {apt.floor != null && <Text style={styles.aptDetail}>{t('apartments.floor', { floor: apt.floor })}</Text>}
                 {apt.phone && <Text style={styles.aptDetail}>{apt.phone}</Text>}
               </View>
               <View style={styles.aptRight}>
-                <Badge label={apt.active ? 'Actif' : 'Inactif'} variant={apt.active ? 'success' : 'neutral'} />
+                <Badge label={apt.active ? t('common.active') : t('common.inactive')} variant={apt.active ? 'success' : 'neutral'} />
                 {(canWrite || canDelete) && menuOptions.length > 0 && (
                   <DropdownMenu options={menuOptions}>
                     <Ionicons name="ellipsis-vertical" size={18} color={Colors.textSecondary} />

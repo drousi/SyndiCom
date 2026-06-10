@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors, Radius, Spacing, FontSize, FontWeight } from '../../constants/theme';
 import { Button } from './Button';
 import { MONTHS_FR } from '../../constants/app';
+import { useLanguageStore } from '../../store/language.store';
 
 interface DatePickerModalProps {
   visible: boolean;
@@ -15,6 +16,7 @@ interface DatePickerModalProps {
 export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePickerModalProps) {
   const Colors = useThemeColors();
   const styles = useMemo(() => createStyles(Colors), [Colors]);
+  const { isRTL, t } = useLanguageStore();
 
   const initialDate = date ? new Date(date) : new Date();
   const [currentMonth, setCurrentMonth] = useState(initialDate.getMonth());
@@ -65,7 +67,10 @@ export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePick
     setSelectedDate(`${currentYear}-${mm}-${dd}`);
   };
 
-  const DAYS_WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const DAYS_WEEK = [
+    t('days_min.lun'), t('days_min.mar'), t('days_min.mer'),
+    t('days_min.jeu'), t('days_min.ven'), t('days_min.sam'), t('days_min.dim')
+  ];
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -77,13 +82,13 @@ export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePick
               {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity onPress={handlePrevMonth} style={styles.navBtn}>
-                  <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                  <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={24} color={Colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
-                  {MONTHS_FR[currentMonth]} {currentYear}
+                  {t(`periods.m${currentMonth + 1}` as any)} {currentYear}
                 </Text>
                 <TouchableOpacity onPress={handleNextMonth} style={styles.navBtn}>
-                  <Ionicons name="chevron-forward" size={24} color={Colors.textPrimary} />
+                  <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={24} color={Colors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -130,8 +135,8 @@ export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePick
 
               {/* Actions */}
               <View style={styles.actions}>
-                <Button label="Annuler" variant="outline" onPress={onCancel} style={{ flex: 1 }} />
-                <Button label="Confirmer" onPress={() => onConfirm(selectedDate)} style={{ flex: 1 }} />
+                <Button label={t('common.cancel')} variant="outline" onPress={onCancel} style={{ flex: 1 }} />
+                <Button label={t('common.confirm')} onPress={() => onConfirm(selectedDate)} style={{ flex: 1 }} />
               </View>
 
             </View>

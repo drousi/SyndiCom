@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
-import { MONTHS_SHORT_FR } from '../constants/app';
+import { MONTHS_SHORT_FR, getPeriodShortLabels } from '../constants/app';
 import type { DashboardStats, Apartment, Contribution, Expense, ResidenceWithRole } from '../types';
 
 export async function generateDashboardPDF(
@@ -13,12 +13,16 @@ export async function generateDashboardPDF(
   activeResidence: ResidenceWithRole | null
 ) {
   try {
+    const frequency = activeResidence?.contribution_frequency ?? 'monthly';
+    const periodShortLabels = getPeriodShortLabels(frequency);
+    const maxPeriods = periodShortLabels.length;
+
     const ops: any[] = [];
     const groupedContribs = new Map<string, any>();
     allContribs.filter(c => c.paid).forEach(c => {
       const dateStr = new Date(c.paid_at || c.created_at).toISOString().split('T')[0];
       const key = `${c.apartment_id}_${dateStr}`;
-      const monthLabel = MONTHS_SHORT_FR[c.month - 1].toUpperCase();
+      const monthLabel = (periodShortLabels[c.period_number - 1] || '').toUpperCase();
 
       if (groupedContribs.has(key)) {
         const group = groupedContribs.get(key);
@@ -38,12 +42,18 @@ export async function generateDashboardPDF(
 
     groupedContribs.forEach(group => {
       const aptNumber = allApts.find(a => a.id === group.apartment_id)?.number || '';
-      const monthsCount = group.months.length;
-      const monthsLabel = `${monthsCount} mois`;
+      const periodsCount = group.months.length;
+      let periodUnitLabel = `${periodsCount} mois`;
+      if (frequency === 'quarterly') {
+        periodUnitLabel = `${periodsCount} trim.`;
+      } else if (frequency === 'yearly') {
+        periodUnitLabel = `${periodsCount} an.`;
+      }
+
       ops.push({
         date: group.date,
         created_at: group.created_at,
-        desc: `Cotisation App. ${aptNumber} (${monthsLabel} ${group.year})`,
+        desc: `Cotisation App. ${aptNumber} (${periodUnitLabel} ${group.year})`,
         sign: '+',
         amount: group.amount
       });
@@ -62,7 +72,7 @@ export async function generateDashboardPDF(
     ops.sort((a, b) => {
       const dateStrA = new Date(a.date).toISOString().split('T')[0];
       const dateStrB = new Date(b.date).toISOString().split('T')[0];
-      
+
       if (dateStrA === dateStrB) {
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
@@ -179,34 +189,36 @@ export async function generateDashboardPDF(
             <thead>
               <tr>
                 <th>APPARTEMENT</th>
-                ${Array.from({ length: 12 }, (_, i) => `<th>${MONTHS_SHORT_FR[i].toUpperCase()}</th>`).join('')}
+                ${periodShortLabels.map(label => `<th>${label.toUpperCase()}</th>`).join('')}
                 <th>TOTAL ANNUEL</th>
               </tr>
             </thead>
             <tbody>
               ${allApts.map(apt => {
-                const aptTotal = allContribs.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
-                const residentName = apt.owner_name ? ` (${apt.owner_name})` : '';
-                return `
+      const aptTotal = allContribs.filter(c => c.apartment_id === apt.id).reduce((sum, c) => sum + c.amount, 0);
+      const residentName = apt.owner_name ? ` (${apt.owner_name})` : '';
+      return `
                 <tr>
                   <th>${apt.number}${residentName}</th>
-                  ${Array.from({ length: 12 }, (_, i) => {
-                    const contrib = allContribs.find(c => c.apartment_id === apt.id && c.month === i + 1);
-                    if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
-                    return `<td></td>`;
-                  }).join('')}
+                  ${Array.from({ length: maxPeriods }, (_, i) => {
+        const contrib = allContribs.find(c => c.apartment_id === apt.id && c.month === i + 1);
+        if (contrib && contrib.amount > 0) return `<td style="padding: 2px;"><span style="background-color: #E8F5E9; color: #2E7D32; border-radius: 4px; padding: 3px 5px; font-weight: bold; display: inline-block;">${contrib.amount}</span></td>`;
+        return `<td></td>`;
+      }).join('')}
                   <th style="background-color: transparent;">${aptTotal > 0 ? aptTotal : ''}</th>
                 </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
             <tfoot>
               <tr>
-                <th style="text-align: left;">TOTAL PAR MOIS</th>
-                ${Array.from({ length: 12 }, (_, i) => {
-                  const monthTotal = allContribs.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
-                  return `<th>${monthTotal > 0 ? monthTotal : ''}</th>`;
-                }).join('')}
+                <th style="text-align: left;">
+                  ${frequency === 'quarterly' ? 'TOTAL PAR TRIM.' : (frequency === 'yearly' ? 'TOTAL ANNUEL' : 'TOTAL PAR MOIS')}
+                </th>
+                ${Array.from({ length: maxPeriods }, (_, i) => {
+      const monthTotal = allContribs.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
+      return `<th>${monthTotal > 0 ? monthTotal : ''}</th>`;
+    }).join('')}
                 <th>${allContribs.reduce((sum, c) => sum + c.amount, 0)}</th>
               </tr>
             </tfoot>
@@ -247,18 +259,18 @@ export async function generateDashboardPDF(
     `;
 
     const { uri } = await Print.printToFileAsync({ html, base64: false });
-    
+
     const dateStr = new Date().toISOString().split('T')[0];
     const safeResidenceName = (activeResidence?.name || 'SYNDICOM').replace(/[^a-z0-9]/gi, '_').toUpperCase();
     const newUri = `${FileSystem.cacheDirectory}${safeResidenceName}_${dateStr}.pdf`;
     await FileSystem.moveAsync({ from: uri, to: newUri });
-    
+
     await Sharing.shareAsync(newUri, {
       mimeType: 'application/pdf',
       dialogTitle: 'Partager le rapport complet',
       UTI: 'com.adobe.pdf'
     });
-    
+
   } catch (error: any) {
     Alert.alert('Erreur', 'Impossible de générer le PDF');
   }

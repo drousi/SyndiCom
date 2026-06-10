@@ -11,9 +11,11 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
 import { ROLE_LABELS } from '../../../src/constants/app';
 import type { UserResidenceWithProfile, ResidenceRole } from '../../../src/types';
+import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function UsersSettingsScreen() {
   const router = useRouter();
+  const { t, isRTL } = useLanguageStore();
   const { activeResidence, hasPermission } = useAuthStore();
   const [users, setUsers] = useState<UserResidenceWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ export default function UsersSettingsScreen() {
     if (!actionUser) return [];
     return [
       {
-        label: 'Forcer un nouveau mot de passe',
+        label: t('users.force_password'),
         icon: 'key-outline',
         onPress: () => {
           setSelectedUser(actionUser);
@@ -84,18 +86,18 @@ export default function UsersSettingsScreen() {
         }
       },
       {
-        label: 'Détacher de son appartement',
+        label: t('users.detach_apartment'),
         icon: 'unlink-outline',
         onPress: () => {
           setActionSheetVisible(false);
           setTimeout(() => {
             Alert.alert(
-              'Détacher l\'utilisateur',
-              'Êtes-vous sûr de vouloir libérer l\'appartement de ce résident ?',
+              t('users.detach_apartment_confirm_title'),
+              t('users.detach_apartment_confirm_desc'),
               [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                  text: 'Détacher',
+                  text: t('users.detach_apartment'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
@@ -104,10 +106,10 @@ export default function UsersSettingsScreen() {
                         .update({ resident_user_id: null })
                         .eq('resident_user_id', actionUser.user_id)
                         .eq('residence_id', activeResidence?.id);
-                      Alert.alert('Succès', 'Le résident a été détaché.');
+                      Alert.alert(t('common.success'), t('users.detach_apartment_success'));
                       loadUsers();
                     } catch (e: any) {
-                      Alert.alert('Erreur', e?.message);
+                      Alert.alert(t('common.error'), e?.message);
                     }
                   }
                 }
@@ -117,7 +119,7 @@ export default function UsersSettingsScreen() {
         }
       },
       {
-        label: actionUser.role === 'manager' ? 'Nommer Résident (enlever Gérant)' : 'Nommer Gérant (Manager)',
+        label: actionUser.role === 'manager' ? t('users.remove_manager') : t('users.make_manager'),
         icon: 'briefcase-outline',
         onPress: async () => {
           setActionSheetVisible(false);
@@ -132,33 +134,33 @@ export default function UsersSettingsScreen() {
               await supabase.from('user_residences').update({ role: 'resident' }).eq('user_id', actionUser.user_id).eq('residence_id', activeResidence?.id);
             }
             loadUsers();
-          } catch (e: any) { Alert.alert('Erreur', e?.message); }
+          } catch (e: any) { Alert.alert(t('common.error'), e?.message); }
         }
       },
       {
-        label: actionUser.role === 'admin' ? 'Nommer Résident (enlever Admin)' : 'Nommer Administrateur',
+        label: actionUser.role === 'admin' ? t('users.remove_admin') : t('users.make_admin'),
         icon: 'shield-checkmark-outline',
         onPress: async () => {
           setActionSheetVisible(false);
           try {
             await supabase.from('user_residences').update({ role: actionUser.role === 'admin' ? 'resident' : 'admin' }).eq('user_id', actionUser.user_id).eq('residence_id', activeResidence?.id);
             loadUsers();
-          } catch (e: any) { Alert.alert('Erreur', e?.message); }
+          } catch (e: any) { Alert.alert(t('common.error'), e?.message); }
         }
       },
       {
-        label: 'Détacher de ses appartements',
+        label: t('users.detach_all_apartments'),
         icon: 'unlink-outline',
         onPress: () => {
           setActionSheetVisible(false);
           setTimeout(() => {
             Alert.alert(
-              'Confirmation',
-              `Voulez-vous vraiment détacher ${actionUser.full_name || 'cet utilisateur'} de tous ses appartements ? (Il restera membre de la résidence)`,
+              t('users.detach_all_confirm_title'),
+              t('users.detach_all_confirm_desc', { name: actionUser.full_name || t('users.unknown_user') }),
               [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                  text: 'Détacher',
+                  text: t('users.detach_all_apartments'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
@@ -166,8 +168,8 @@ export default function UsersSettingsScreen() {
                         .update({ resident_user_id: null })
                         .eq('resident_user_id', actionUser.user_id)
                         .eq('residence_id', activeResidence?.id);
-                      Alert.alert('Succès', 'L\'utilisateur a été détaché de ses appartements.');
-                    } catch (e: any) { Alert.alert('Erreur', e?.message); }
+                      Alert.alert(t('common.success'), t('users.detach_all_success'));
+                    } catch (e: any) { Alert.alert(t('common.error'), e?.message); }
                   }
                 }
               ]
@@ -176,27 +178,27 @@ export default function UsersSettingsScreen() {
         }
       },
       {
-        label: 'Supprimer de la résidence',
+        label: t('users.remove_from_residence'),
         icon: 'trash-outline',
         destructive: true,
         onPress: () => {
           setActionSheetVisible(false);
           setTimeout(() => {
             Alert.alert(
-              'Confirmation',
-              `Voulez-vous vraiment retirer ${actionUser.full_name || 'cet utilisateur'} de la résidence ?`,
+              t('users.remove_from_residence_confirm_title'),
+              t('users.remove_from_residence_confirm_desc', { name: actionUser.full_name || t('users.unknown_user') }),
               [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                  text: 'Retirer',
+                  text: t('users.remove_from_residence'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
                       await supabase.from('user_residences').delete().eq('user_id', actionUser.user_id).eq('residence_id', activeResidence?.id);
                       await supabase.from('apartments').update({ resident_user_id: null }).eq('resident_user_id', actionUser.user_id).eq('residence_id', activeResidence?.id);
                       loadUsers();
-                      Alert.alert('Succès', "L'utilisateur a été retiré et détaché de ses appartements.");
-                    } catch (e: any) { Alert.alert('Erreur', e?.message); }
+                      Alert.alert(t('common.success'), t('users.remove_from_residence_success'));
+                    } catch (e: any) { Alert.alert(t('common.error'), e?.message); }
                   }
                 }
               ]
@@ -217,7 +219,7 @@ export default function UsersSettingsScreen() {
 
   const handleResetPassword = async () => {
     if (!selectedUser || newPassword.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit faire au moins 6 caractères.');
+      Alert.alert(t('common.error'), t('users.reset_password_error_length'));
       return;
     }
 
@@ -243,12 +245,12 @@ export default function UsersSettingsScreen() {
       const data = await response.json();
       if (data?.error) throw new Error(data.error);
 
-      Alert.alert('Succès', 'Le mot de passe a été mis à jour avec succès.');
+      Alert.alert(t('common.success'), t('users.reset_password_success'));
       setPasswordModalVisible(false);
       setNewPassword('');
     } catch (e: any) {
       console.error('Fetch error:', e);
-      Alert.alert('Erreur', e?.message || 'Impossible de réinitialiser le mot de passe.');
+      Alert.alert(t('common.error'), e?.message || t('users.reset_password_error'));
     } finally {
       setIsResetting(false);
     }
@@ -258,9 +260,9 @@ export default function UsersSettingsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Utilisateurs</Text>
+        <Text style={styles.headerTitle}>{t('users.title')}</Text>
         <TouchableOpacity onPress={() => router.push('/(app)/settings/new-user')}>
           <Ionicons name="person-add" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -300,7 +302,7 @@ export default function UsersSettingsScreen() {
                 item.role === 'admin' && { color: Colors.danger },
                 item.role === 'manager' && { color: Colors.warning },
               ]}>
-                {ROLE_LABELS[item.role] || item.role}
+                {t(`roles.${item.role}` as any) || item.role}
               </Text>
               {canManageUsers && (
                 <Ionicons 
@@ -319,13 +321,13 @@ export default function UsersSettingsScreen() {
       <Modal visible={passwordModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Nouveau mot de passe</Text>
+            <Text style={styles.modalTitle}>{t('users.reset_password_title')}</Text>
             <Text style={styles.modalDesc}>
-              Saisissez un nouveau mot de passe pour {selectedUser?.full_name || selectedUser?.email}.
+              {t('users.reset_password_desc', { name: selectedUser?.full_name || selectedUser?.email || '' })}
             </Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Min. 6 caractères"
+              placeholder={t('users.reset_password_placeholder')}
               placeholderTextColor={Colors.textMuted}
               value={newPassword}
               onChangeText={setNewPassword}
@@ -338,7 +340,7 @@ export default function UsersSettingsScreen() {
                 onPress={() => setPasswordModalVisible(false)}
                 disabled={isResetting}
               >
-                <Text style={[styles.modalBtnText, { color: Colors.textSecondary }]}>Annuler</Text>
+                <Text style={[styles.modalBtnText, { color: Colors.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnSubmit]}
@@ -348,7 +350,7 @@ export default function UsersSettingsScreen() {
                 {isResetting ? (
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
-                  <Text style={[styles.modalBtnText, { color: Colors.white }]}>Confirmer</Text>
+                  <Text style={[styles.modalBtnText, { color: Colors.white }]}>{t('common.confirm')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -358,8 +360,8 @@ export default function UsersSettingsScreen() {
 
       <ActionSheet
         visible={actionSheetVisible}
-        title={`Gestion de ${actionUser?.full_name || 'l\'utilisateur'}`}
-        subtitle="Choisissez une action"
+        title={t('users.action_sheet_title', { name: actionUser?.full_name || t('users.unknown_user') })}
+        subtitle={t('users.action_sheet_subtitle')}
         options={getActionSheetOptions()}
         onClose={() => setActionSheetVisible(false)}
       />

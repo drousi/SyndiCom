@@ -11,7 +11,7 @@ interface SelectOption {
 
 interface SelectInputProps {
   label?: string;
-  options: SelectOption[];
+  options: readonly SelectOption[];
   selectedValue: string;
   onSelect: (value: string) => void;
   containerStyle?: ViewStyle;
