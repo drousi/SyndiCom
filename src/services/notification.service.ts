@@ -3,8 +3,13 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 
 // Initialiser le canal de rappel pour Android
+// On supprime avant de recréer pour forcer l'application du son personnalisé
+// (Android ignore les modifications de canal existant)
 export async function setupNotificationChannels() {
   if (Platform.OS === 'android') {
+    try {
+      await Notifications.deleteNotificationChannelAsync('reminders');
+    } catch (_) {}
     await Notifications.setNotificationChannelAsync('reminders', {
       name: 'Rappels de relance',
       importance: Notifications.AndroidImportance.MAX,
@@ -63,11 +68,11 @@ export async function scheduleConfiguredReminder(settings: {
       channelId: 'reminders',
     },
     trigger: {
-      type: 'weekly',
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
       weekday: settings.dayOfWeek,
       hour: settings.hour,
       minute: settings.minute,
-    } as any,
+    },
   });
 }
 
@@ -86,10 +91,10 @@ export async function scheduleTestReminder() {
       channelId: 'reminders',
     },
     trigger: {
-      type: 'timeInterval',
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 5,
       repeats: false,
-    } as any,
+    },
   });
 }
 

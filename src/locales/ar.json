@@ -355,5 +355,15 @@
     "monthly": "شهرية",
     "quarterly": "ربع سنوية",
     "yearly": "سنوية"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "mark_all_read": "تحديد الكل كمقروء",
+    "empty_title": "لا توجد إشعارات",
+    "empty_desc": "ليس لديك أي إشعارات بعد.",
+    "type_reminder": "تذكير بالدفع",
+    "type_payment": "دفعة",
+    "type_expense": "مصروف",
+    "type_system": "نظام"
   }
 }

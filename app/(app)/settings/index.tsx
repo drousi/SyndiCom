@@ -405,8 +405,8 @@ export default function SettingsScreen() {
                         <TouchableOpacity
                           style={{ padding: 4 }}
                           onPress={() => {
-                            let newMin = reminderStore.minute - 15;
-                            if (newMin < 0) newMin = 45;
+                            let newMin = reminderStore.minute - 10;
+                            if (newMin < 0) newMin = 50;
                             handleUpdateReminderSettings({ minute: newMin });
                           }}
                         >
@@ -418,8 +418,8 @@ export default function SettingsScreen() {
                         <TouchableOpacity
                           style={{ padding: 4 }}
                           onPress={() => {
-                            let newMin = reminderStore.minute + 15;
-                            if (newMin > 45) newMin = 0;
+                            let newMin = reminderStore.minute + 10;
+                            if (newMin > 50) newMin = 0;
                             handleUpdateReminderSettings({ minute: newMin });
                           }}
                         >

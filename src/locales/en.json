@@ -355,5 +355,15 @@
     "monthly": "Monthly",
     "quarterly": "Quarterly",
     "yearly": "Yearly"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "mark_all_read": "Mark all as read",
+    "empty_title": "No notifications",
+    "empty_desc": "You have no notifications yet.",
+    "type_reminder": "Payment reminder",
+    "type_payment": "Payment",
+    "type_expense": "Expense",
+    "type_system": "System"
   }
 }

@@ -1,3 +1,18 @@
+// ─── Notification ───────────────────────────────────────────────────────────────
+
+export type NotificationType = 'reminder' | 'payment' | 'expense' | 'system';
+
+export interface AppNotification {
+  id: string;
+  residence_id: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  is_read: boolean;
+  is_archived: boolean;
+  created_at: string;
+}
+
 // ─── Roles ─────────────────────────────────────────────────────────────────────
 
 /** Rôle système (app-level) — stocké dans profiles.system_role */

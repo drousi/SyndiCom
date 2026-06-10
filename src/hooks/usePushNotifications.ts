@@ -1,27 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../supabase/client';
 import { useAuthStore } from '../store/auth.store';
+import { createNotification } from '../db/repositories/notifications';
+import type { NotificationType } from '../types';
 
-// On n'initialise les notifications que si on n'est pas dans Expo Go
-if (Constants.appOwnership !== 'expo') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-}
+// Handler requis pour afficher les notifications quand l'app est au premier plan
+// (s'applique aux notifications locales ET push)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export function usePushNotifications() {
-  const { profile, isAuthenticated } = useAuthStore();
+  const { profile, isAuthenticated, activeResidence } = useAuthStore();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const activeResidenceRef = useRef(activeResidence);
+
+  useEffect(() => {
+    activeResidenceRef.current = activeResidence;
+  }, [activeResidence]);
 
   useEffect(() => {
     if (!isAuthenticated || !profile) return;
@@ -29,7 +35,6 @@ export function usePushNotifications() {
     registerForPushNotificationsAsync().then((token) => {
       if (token && token !== profile.push_token) {
         setExpoPushToken(token);
-        // Sauvegarde silencieuse dans Supabase
         supabase
           .from('profiles')
           .update({ push_token: token })
@@ -42,6 +47,24 @@ export function usePushNotifications() {
       }
     });
   }, [isAuthenticated, profile?.id, profile?.push_token]);
+
+  // Persist every received notification to the DB inbox
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+      const residenceId = activeResidenceRef.current?.id;
+      if (!residenceId) return;
+
+      const { title, body, data } = notification.request.content;
+      createNotification({
+        residence_id: residenceId,
+        title: title ?? '',
+        body: body ?? '',
+        type: (data?.type as NotificationType) ?? 'system',
+      }).catch((e) => console.error('Error persisting notification:', e));
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   return { expoPushToken };
 }
