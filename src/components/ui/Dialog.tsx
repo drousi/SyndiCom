@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, Radius, FontSize, FontWeight, Spacing } from '../../constants/theme';
+import { useThemeColors, Radius, FontSize, FontWeight, Spacing, ThemeColors } from '../../constants/theme';
 import { Button } from './Button';
 
 interface DialogAction {
@@ -88,7 +88,7 @@ export function Dialog({
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

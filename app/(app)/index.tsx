@@ -19,15 +19,14 @@ type ApartmentWithUnpaid = Apartment & { unpaidMonthsCount: number };
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BalanceCard } from '../../src/components/ui/BalanceCard';
 import { EmptyState } from '../../src/components/ui/EmptyState';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow, ThemeColors } from '../../src/constants/theme';
 import { useDashboardData } from '../../src/hooks/useDashboardData';
-import { MONTHS_FR, MONTHS_SHORT_FR } from '../../src/constants/app';
+import { EXPENSE_TYPES } from '../../src/constants/app';
 import { generateDashboardPDF } from '../../src/services/pdf.service';
 import { scheduleConfiguredReminder } from '../../src/services/notification.service';
 import { useReminderStore } from '../../src/store/reminder.store';
 import { useLanguageStore } from '../../src/store/language.store';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -121,10 +120,14 @@ export default function DashboardScreen() {
       return;
     }
 
-    const freq = activeResidence?.contribution_frequency ?? 'monthly';
     const periodsStr = `${apt.unpaidMonthsCount} ${getPeriodUnitLabel(apt.unpaidMonthsCount)}`;
-    
-    const message = `Bonjour ${apt.owner_name || ''},\n\nC'est le syndic de la résidence *${activeResidence?.name || ''}*.\nLe paiement de *${periodsStr}* de cotisation pour l'appartement *${apt.number}* est en attente.\n\nMerci de bien vouloir régulariser le paiement dès que possible.\n\nCordialement.`;
+
+    const message = t('dashboard.whatsapp_message', {
+      ownerName: apt.owner_name || '',
+      residenceName: activeResidence?.name || '',
+      periods: periodsStr,
+      aptNumber: apt.number,
+    });
 
     openWhatsApp(phone, message);
   };
@@ -329,7 +332,9 @@ export default function DashboardScreen() {
               <View key={op.id} style={styles.opRow}>
                 <View style={[styles.opIcon, { backgroundColor: op.type === 'contribution' ? Colors.successLight : Colors.dangerLight }]}>
                   <Ionicons
-                    name={op.type === 'contribution' ? 'arrow-down' : 'arrow-up'}
+                    name={op.type === 'contribution'
+                      ? 'cash-outline'
+                      : (EXPENSE_TYPES.find(et => et.key === op.expenseType)?.icon ?? 'receipt-outline') as any}
                     size={16}
                     color={op.type === 'contribution' ? Colors.success : Colors.danger}
                   />
@@ -355,7 +360,7 @@ export default function DashboardScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
 

@@ -15,7 +15,7 @@ import { supabase } from '../../../src/supabase/client';
 import { DropdownMenu } from '../../../src/components/ui/DropdownMenu';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../../src/constants/theme';
 import { SelectInput } from '../../../src/components/ui/SelectInput';
 import { useLanguageStore } from '../../../src/store/language.store';
 
@@ -504,7 +504,7 @@ export default function ApartmentFormScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   header: {
     flexDirection: 'row',

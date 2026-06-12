@@ -4,7 +4,7 @@ import {
   TouchableWithoutFeedback, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../constants/theme';
 import { useLanguageStore } from '../../store/language.store';
 
 export interface ActionSheetOption {
@@ -87,7 +87,7 @@ export function ActionSheet({ visible, title, subtitle, options, onClose }: Acti
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

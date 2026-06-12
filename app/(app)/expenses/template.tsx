@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityInd
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/store/auth.store';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../../src/constants/theme';
 import { DateField } from '../../../src/components/ui/DateField';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import { createExpenseTemplate, updateExpenseTemplate, getActiveExpenseTemplates } from '../../../src/db/repositories/expense_templates';
@@ -255,7 +255,7 @@ export default function TemplateScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   header: {
     flexDirection: 'row',

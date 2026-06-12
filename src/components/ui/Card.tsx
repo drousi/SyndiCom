@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { useThemeColors, Radius, Shadow, Spacing } from '../../constants/theme';
+import { useThemeColors, Radius, Shadow, Spacing, ThemeColors } from '../../constants/theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ export function Card({ children, style, dark = false, noPadding = false }: CardP
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   card: {
     borderRadius: Radius.lg,
     padding: Spacing.xl,

@@ -49,12 +49,15 @@ export function usePushNotifications() {
   }, [isAuthenticated, profile?.id, profile?.push_token]);
 
   // Persist every received notification to the DB inbox
+  // Skip notifications with createInApp=false (e.g. server-sent pushes already stored in DB)
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const residenceId = activeResidenceRef.current?.id;
       if (!residenceId) return;
 
       const { title, body, data } = notification.request.content;
+      if (data?.createInApp === false) return;
+
       createNotification({
         residence_id: residenceId,
         title: title ?? '',

@@ -1,13 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import {
-  getTotalContributions,
-  getContributionsByResidence,
-} from '../db/repositories/contributions';
-import {
-  getTotalExpenses,
-  getExpensesByResidence,
-} from '../db/repositories/expenses';
+import { getContributionsByResidence } from '../db/repositories/contributions';
+import { getExpensesByResidence } from '../db/repositories/expenses';
 import { getApartmentsByResidence } from '../db/repositories/apartments';
 import { DashboardStats, RecentOperation } from '../types';
 import { format } from 'date-fns';
@@ -20,14 +14,12 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
     queryKey: ['dashboard', residenceId, currentYear, currentMonth],
     queryFn: async () => {
       if (!residenceId) throw new Error('No residence ID');
-      const [totalContribs, totalExpenses, apartments, contributions, expenses] = await Promise.all([
-        getTotalContributions(residenceId),
-        getTotalExpenses(residenceId),
+      const [apartments, contributions, expenses] = await Promise.all([
         getApartmentsByResidence(residenceId),
         getContributionsByResidence(residenceId, currentYear),
         getExpensesByResidence(residenceId, currentYear),
       ]);
-      return { totalContribs, totalExpenses, apartments, contributions, expenses };
+      return { apartments, contributions, expenses };
     },
     enabled: !!residenceId,
     staleTime: 1000 * 60 * 5, // Cache valid for 5 minutes
@@ -40,7 +32,7 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
   const processedData = useMemo(() => {
     if (!data) return null;
 
-    const { totalContribs, totalExpenses, apartments, contributions, expenses } = data;
+    const { apartments, contributions, expenses } = data;
     const activeApts = apartments.filter(a => a.active);
     const frequency = activeResidence?.contribution_frequency ?? 'monthly';
     
@@ -143,6 +135,7 @@ export function useDashboardData(residenceId: string | undefined, currentYear: n
       ops.push({
         id: e.id,
         type: 'expense',
+        expenseType: e.type,
         label: e.description || e.type,
         sublabel: format(new Date(e.date), 'dd MMM yyyy', { locale: dateLocale }),
         amount: e.amount,

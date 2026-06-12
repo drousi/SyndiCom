@@ -5,7 +5,7 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-rout
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useThemeStore } from '../src/store/theme.store';
-import { useThemeColors } from '../src/constants/theme';
+import { useThemeColors, DarkColors } from '../src/constants/theme';
 import {
   useFonts,
   Inter_400Regular,
@@ -25,7 +25,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useAuthStore } from '../src/store/auth.store';
 import { DialogProvider } from '../src/components/ui/DialogProvider';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
-import { Platform, Keyboard, LogBox, View, Text, StyleSheet, I18nManager, DevSettings, TouchableOpacity } from 'react-native';
+import { Platform, Keyboard, LogBox, View, Text, StyleSheet, DevSettings, TouchableOpacity, I18nManager } from 'react-native';
 
 // ─── Global Error Boundary ────────────────────────────────────────────────────
 interface ErrorBoundaryState {
@@ -72,32 +72,32 @@ class AppErrorBoundary extends React.Component<
 const errorBoundaryStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B2A',
+    backgroundColor: DarkColors.navy,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
     gap: 16,
   },
   title: {
-    color: '#FFFFFF',
+    color: DarkColors.textPrimary,
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
   },
   message: {
-    color: '#94A3B8',
+    color: DarkColors.textSecondary,
     fontSize: 13,
     textAlign: 'center',
   },
   button: {
     marginTop: 8,
-    backgroundColor: '#4CAF50',
+    backgroundColor: DarkColors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: DarkColors.white,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -198,15 +198,13 @@ export default function RootLayout() {
   const hasNavigated = useRef(false);
   const [appIsReady, setAppIsReady] = useState(false);
   const [minSplashTimeElapsed, setMinSplashTimeElapsed] = useState(false);
-  const { locale, hasChosenLanguage } = useLanguageStore();
+  const { locale } = useLanguageStore();
 
-  // Synchroniser dynamiquement l'état RTL natif avec la langue sélectionnée
+  // Re-apply I18nManager RTL on every startup (persisted locale won't call setLocale)
   useEffect(() => {
     const isArabic = locale === 'ar';
-    if (I18nManager.isRTL !== isArabic) {
-      I18nManager.allowRTL(isArabic);
-      I18nManager.forceRTL(isArabic);
-    }
+    I18nManager.allowRTL(isArabic);
+    I18nManager.forceRTL(isArabic);
   }, [locale]);
 
   useEffect(() => {
@@ -278,14 +276,8 @@ export default function RootLayout() {
     const inApp = segments[0] === '(app)';
 
     if (!isAuthenticated) {
-      if (!hasChosenLanguage) {
-        if (segments[1] !== 'select-language') {
-          router.replace('/(auth)/select-language');
-        }
-      } else {
-        if (!inAuth || segments[1] === 'select-language') {
-          router.replace('/(auth)/login');
-        }
+      if (!inAuth || segments[1] === 'select-language') {
+        router.replace('/(auth)/login');
       }
       hasNavigated.current = false;
       return;

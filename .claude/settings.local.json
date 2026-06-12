@@ -7,7 +7,8 @@
       "mcp__mcp-registry__search_mcp_registry",
       "mcp__09dec35e-1cd5-47f1-a694-687749e25c1b__list_projects",
       "mcp__09dec35e-1cd5-47f1-a694-687749e25c1b__list_tables",
-      "mcp__09dec35e-1cd5-47f1-a694-687749e25c1b__apply_migration"
+      "mcp__09dec35e-1cd5-47f1-a694-687749e25c1b__apply_migration",
+      "mcp__09dec35e-1cd5-47f1-a694-687749e25c1b__execute_sql"
     ]
   }
 }

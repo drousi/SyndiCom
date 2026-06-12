@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../constants/theme';
 import { useThemeStore } from '../../store/theme.store';
 import { format } from 'date-fns';
 import { fr, enUS, ar } from 'date-fns/locale';
@@ -65,7 +65,7 @@ export function DatePickerInput({ label, value, onChange, error, formatString = 
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { gap: Spacing.sm },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textSecondary },
   inputWrapper: {

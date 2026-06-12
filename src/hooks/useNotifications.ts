@@ -10,54 +10,59 @@ import { useAuthStore } from '../store/auth.store';
 import type { AppNotification } from '../types';
 
 export function useNotifications() {
-  const { activeResidence } = useAuthStore();
+  const { activeResidence, profile, isAdmin, isManager } = useAuthStore();
   const residenceId = activeResidence?.id;
+  const userId = profile?.id;
+  const isAdminOrManager = isAdmin() || isManager();
   const queryClient = useQueryClient();
 
+  const queryKey = ['notifications', residenceId, userId, isAdminOrManager];
+  const countKey = ['notifications_count', residenceId, userId, isAdminOrManager];
+
   const { data: notifications = [], isLoading, refetch } = useQuery({
-    queryKey: ['notifications', residenceId],
-    queryFn: () => getNotifications(residenceId!),
-    enabled: !!residenceId,
+    queryKey,
+    queryFn: () => getNotifications(residenceId!, userId!, isAdminOrManager),
+    enabled: !!residenceId && !!userId,
     staleTime: 1000 * 60,
   });
 
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['notifications_count', residenceId],
-    queryFn: () => getUnreadCount(residenceId!),
-    enabled: !!residenceId,
+    queryKey: countKey,
+    queryFn: () => getUnreadCount(residenceId!, userId!, isAdminOrManager),
+    enabled: !!residenceId && !!userId,
     staleTime: 1000 * 30,
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['notifications', residenceId] });
-    queryClient.invalidateQueries({ queryKey: ['notifications_count', residenceId] });
+    queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: countKey });
   };
 
   const handleMarkRead = async (id: string) => {
-    queryClient.setQueryData<AppNotification[]>(['notifications', residenceId], (old) =>
+    queryClient.setQueryData<AppNotification[]>(queryKey, (old) =>
       old ? old.map((n) => (n.id === id ? { ...n, is_read: true } : n)) : old
     );
-    queryClient.setQueryData<number>(['notifications_count', residenceId], (old) =>
+    queryClient.setQueryData<number>(countKey, (old) =>
       Math.max(0, (old ?? 0) - 1)
     );
     await markNotificationRead(id).catch(() => invalidate());
   };
 
   const handleMarkAllRead = async () => {
-    queryClient.setQueryData<AppNotification[]>(['notifications', residenceId], (old) =>
+    queryClient.setQueryData<AppNotification[]>(queryKey, (old) =>
       old ? old.map((n) => ({ ...n, is_read: true })) : old
     );
-    queryClient.setQueryData<number>(['notifications_count', residenceId], 0);
-    await markAllNotificationsRead(residenceId!).catch(() => invalidate());
+    queryClient.setQueryData<number>(countKey, 0);
+    await markAllNotificationsRead(residenceId!, userId!, isAdminOrManager).catch(() => invalidate());
   };
 
   const handleArchive = async (id: string) => {
     const notif = notifications.find((n) => n.id === id);
-    queryClient.setQueryData<AppNotification[]>(['notifications', residenceId], (old) =>
-      old ? old.filter((n) => n.id !== id) : old
+    queryClient.setQueryData<AppNotification[]>(queryKey, (old) =>
+      old ? old.map((n) => n.id === id ? { ...n, is_archived: true, is_read: true } : n) : old
     );
     if (notif && !notif.is_read) {
-      queryClient.setQueryData<number>(['notifications_count', residenceId], (old) =>
+      queryClient.setQueryData<number>(countKey, (old) =>
         Math.max(0, (old ?? 0) - 1)
       );
     }

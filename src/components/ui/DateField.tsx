@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../constants/theme';
 import { DatePickerModal } from './DatePickerModal';
 
 interface DateFieldProps {
@@ -72,7 +72,7 @@ export function DateField({
   );
 }
 
-const createStyles = (Colors: any) =>
+const createStyles = (Colors: ThemeColors) =>
   StyleSheet.create({
     container: { gap: Spacing.sm },
     label: {

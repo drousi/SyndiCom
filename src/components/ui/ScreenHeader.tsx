@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily, ThemeColors } from '../../constants/theme';
 import { Logo } from './Logo';
 import { useNotifications } from '../../hooks/useNotifications';
 import { NotificationPanel } from './NotificationPanel';
@@ -60,7 +60,7 @@ export function ScreenHeader({ title, showSettings = true }: ScreenHeaderProps) 
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

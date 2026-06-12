@@ -2,7 +2,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
-import { MONTHS_SHORT_FR, getPeriodShortLabels } from '../constants/app';
+import { getPeriodShortLabels } from '../constants/app';
+import { useLanguageStore } from '../store/language.store';
 import type { DashboardStats, Apartment, ContributionWithApartment, Expense, ResidenceWithRole } from '../types';
 
 interface LedgerOperation {
@@ -30,6 +31,11 @@ export async function generateDashboardPDF(
   stats: DashboardStats,
   activeResidence: ResidenceWithRole | null
 ) {
+  const { t, locale } = useLanguageStore.getState();
+  const isRTL = locale === 'ar';
+  const dateLocaleStr = locale === 'ar' ? 'ar-MA' : locale === 'en' ? 'en-US' : 'fr-FR';
+  const currency = activeResidence?.currency ?? 'DH';
+
   try {
     const frequency = activeResidence?.contribution_frequency ?? 'monthly';
     const periodShortLabels = getPeriodShortLabels(frequency);
@@ -61,17 +67,16 @@ export async function generateDashboardPDF(
     groupedContribs.forEach(group => {
       const aptNumber = allApts.find(a => a.id === group.apartment_id)?.number || '';
       const periodsCount = group.months.length;
-      let periodUnitLabel = `${periodsCount} mois`;
-      if (frequency === 'quarterly') {
-        periodUnitLabel = `${periodsCount} trim.`;
-      } else if (frequency === 'yearly') {
-        periodUnitLabel = `${periodsCount} an.`;
-      }
+      const unit = frequency === 'quarterly'
+        ? t('pdf.period_unit_quarter')
+        : frequency === 'yearly'
+          ? t('pdf.period_unit_year')
+          : t('pdf.period_unit_month');
 
       ops.push({
         date: group.date,
         created_at: group.created_at,
-        desc: `Cotisation App. ${aptNumber} (${periodUnitLabel} ${group.year})`,
+        desc: t('pdf.contribution_desc', { number: aptNumber, count: periodsCount, unit, year: group.year }),
         sign: '+',
         amount: group.amount
       });
@@ -103,18 +108,20 @@ export async function generateDashboardPDF(
       op.balance = currentBalance;
     });
 
-    const renderLedgerItems = (list: LedgerOperation[]) => {
-      if (list.length === 0) return '<div style="text-align: center; padding: 10px;">-</div>';
+    const renderLedgerRows = (list: LedgerOperation[]) => {
+      if (list.length === 0) return `<tr><td colspan="5" style="text-align: center; padding: 10px;">-</td></tr>`;
       return list.map(op => {
-        const color = op.sign === '+' ? '#388E3C' : '#D32F2F';
+        const rowColor = op.sign === '+' ? '#388E3C' : '#D32F2F';
+        const bal = op.balance ?? 0;
+        const balColor = bal >= 0 ? '#388E3C' : '#D32F2F';
         return `
-        <div class="ledger-item" style="color: ${color};">
-          <div class="col-date">${new Date(op.date).toLocaleDateString('fr-FR')}</div>
-          <div class="col-desc">${op.desc}</div>
-          <div class="col-sign">${op.sign}</div>
-          <div class="col-amt">${op.amount}</div>
-          <div class="col-bal">${op.balance}</div>
-        </div>
+        <tr style="color: ${rowColor};">
+          <td class="lcol-date">${new Date(op.date).toLocaleDateString(dateLocaleStr)}</td>
+          <td class="lcol-desc">${op.desc}</td>
+          <td class="lcol-sign">${op.sign}</td>
+          <td class="lcol-amt">${op.amount}</td>
+          <td class="lcol-bal" style="color: ${balColor};"><span dir="ltr">${bal}</span></td>
+        </tr>
         `;
       }).join('');
     };
@@ -124,14 +131,19 @@ export async function generateDashboardPDF(
     const totalContribs = currentBal + totalExp;
 
     const html = `
-      <html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}">
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          ${isRTL
+            ? '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">'
+            : '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">'}
           <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+            body { font-family: ${isRTL ? "'Cairo', 'Tahoma'" : "'Inter', 'Arial', 'Helvetica Neue'"}, sans-serif; padding: 20px; color: #333; direction: ${isRTL ? 'rtl' : 'ltr'}; }
             h1 { text-align: center; color: #0D1B2A; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
             
-            .summary-cards { display: flex; gap: 15px; margin-bottom: 25px; }
+            .summary-cards { display: flex; gap: 15px; margin-bottom: 15px; }
             .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #E2E8F0; }
             .card-green { background-color: rgba(76, 175, 80, 0.1); border-color: #4CAF50; color: #388E3C; }
             .card-danger { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; color: #B91C1C; }
@@ -152,63 +164,48 @@ export async function generateDashboardPDF(
             
             tfoot th { background-color: #F1F5F9; color: #0D1B2A; font-weight: bold; }
             
-            .ledger-container { margin-top: 30px; }
+            .ledger-container { margin-top: 20px; }
             .ledger-title { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px; color: #0D1B2A; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
-            .legend { font-size: 10px; margin-top: 15px; color: #64748B; font-style: italic; text-align: center; }
+            .legend { font-size: 10px; margin-top: 10px; color: #64748B; font-style: italic; text-align: center; break-before: avoid; page-break-before: avoid; }
 
-            /* Styles pour le journal en colonnes */
-            .ledger-list { column-count: 1; }
-            .ledger-list.two-cols { column-count: 2; column-gap: 20px; column-fill: auto; }
-            .ledger-item {
-              display: flex;
-              border-bottom: 1px solid #E2E8F0;
-              padding: 4px 0;
-              break-inside: avoid;
-              page-break-inside: avoid;
-              font-size: 9px;
-            }
-            .col-date { flex: 1.5; text-align: center; border-right: 1px solid #F1F5F9; padding-right: 2px; }
-            .col-desc { flex: 3; text-align: left; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
-            .col-sign { flex: 0.5; text-align: center; font-weight: bold; }
-            .col-amt { flex: 1.2; text-align: center; font-weight: bold; }
-            .col-bal { flex: 1.5; text-align: center; }
-            
-            .fake-header {
-              display: flex;
-              background-color: #1B263B;
-              color: #FFF;
-              font-weight: bold;
-              padding: 6px 0;
-              font-size: 9px;
-            }
-            .fake-header > div { border-right: 1px solid rgba(255,255,255,0.2); }
-            .fake-header > div:last-child { border-right: none; }
+            /* Tableau du journal des opérations */
+            .ledger-table { width: 100%; border-collapse: collapse; font-size: ${isRTL ? '8px' : '9px'}; margin-top: 0; }
+            .ledger-table thead { display: table-header-group; }
+            .ledger-table thead th { background-color: #1B263B; color: #FFF; border-color: #1B263B; font-weight: bold; padding: ${isRTL ? '4px 3px' : '5px 4px'}; text-align: center; }
+            .ledger-table tbody tr { page-break-inside: avoid; }
+            .ledger-table tbody tr:nth-child(even) { background-color: #F8FAFC; }
+            .ledger-table td { border: 1px solid #E2E8F0; padding: ${isRTL ? '2px 3px' : '3px 4px'}; }
+            .lcol-date { width: 20%; text-align: center; }
+            .lcol-desc { width: 39%; text-align: ${isRTL ? 'right' : 'left'}; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+            .lcol-sign { width: 6%; text-align: center; font-weight: bold; }
+            .lcol-amt { width: 16%; text-align: center; font-weight: bold; }
+            .lcol-bal { width: 19%; text-align: center; }
           </style>
         </head>
         <body>
-          <h1>SUIVI DES CONTRIBUTIONS ET DÉPENSES - ${(activeResidence?.name || "SYNDIC DE L'IMMEUBLE").toUpperCase()}</h1>
-          
+          <h1>${t('pdf.title')} - ${(activeResidence?.name || '').toUpperCase()}</h1>
+
           <div class="summary-cards">
             <div class="card card-green">
-              <div class="card-title">Total Contributions</div>
-              <div class="card-value">${totalContribs.toLocaleString('fr-MA')} DH</div>
+              <div class="card-title">${t('pdf.total_contributions')}</div>
+              <div class="card-value"><span dir="ltr">${totalContribs.toLocaleString(dateLocaleStr)} ${currency}</span></div>
             </div>
             <div class="card card-danger">
-              <div class="card-title">Total Dépenses</div>
-              <div class="card-value">${totalExp.toLocaleString('fr-MA')} DH</div>
+              <div class="card-title">${t('pdf.total_expenses')}</div>
+              <div class="card-value"><span dir="ltr">${totalExp.toLocaleString(dateLocaleStr)} ${currency}</span></div>
             </div>
             <div class="card card-navy">
-              <div class="card-title">Reste à la Caisse</div>
-              <div class="card-value">${currentBal.toLocaleString('fr-MA')} DH</div>
+              <div class="card-title">${t('pdf.balance')}</div>
+              <div class="card-value"><span dir="ltr">${currentBal.toLocaleString(dateLocaleStr)} ${currency}</span></div>
             </div>
           </div>
 
           <table class="grid-table">
             <thead>
               <tr>
-                <th>APPARTEMENT</th>
+                <th>${t('pdf.col_apartment')}</th>
                 ${periodShortLabels.map(label => `<th>${label.toUpperCase()}</th>`).join('')}
-                <th>TOTAL ANNUEL</th>
+                <th>${t('pdf.col_annual_total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -230,8 +227,8 @@ export async function generateDashboardPDF(
             </tbody>
             <tfoot>
               <tr>
-                <th style="text-align: left;">
-                  ${frequency === 'quarterly' ? 'TOTAL PAR TRIM.' : (frequency === 'yearly' ? 'TOTAL ANNUEL' : 'TOTAL PAR MOIS')}
+                <th style="text-align: ${isRTL ? 'right' : 'left'};">
+                  ${frequency === 'quarterly' ? t('pdf.footer_quarterly') : (frequency === 'yearly' ? t('pdf.footer_yearly') : t('pdf.footer_monthly'))}
                 </th>
                 ${Array.from({ length: maxPeriods }, (_, i) => {
       const monthTotal = allContribs.filter(c => c.month === i + 1).reduce((sum, c) => sum + c.amount, 0);
@@ -243,34 +240,42 @@ export async function generateDashboardPDF(
           </table>
 
           <div class="ledger-container">
-            <div class="ledger-title">Journal Chronologique des Opérations</div>
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 5px;">
-              <div class="fake-header" style="flex: 1;">
-                <div class="col-date">DATE</div>
-                <div class="col-desc" style="padding-left: 4px;">DESCRIPTION</div>
-                <div class="col-sign">MVT</div>
-                <div class="col-amt">MONTANT</div>
-                <div class="col-bal">SOLDE</div>
-              </div>
-              ${ops.length > 20 ? `
-              <div class="fake-header" style="flex: 1;">
-                <div class="col-date">DATE</div>
-                <div class="col-desc" style="padding-left: 4px;">DESCRIPTION</div>
-                <div class="col-sign">MVT</div>
-                <div class="col-amt">MONTANT</div>
-                <div class="col-bal">SOLDE</div>
-              </div>
-              ` : ''}
-            </div>
+            <div class="ledger-title">${t('pdf.ledger_title')}</div>
 
-            <div class="ledger-list ${ops.length > 20 ? 'two-cols' : ''}">
-              ${renderLedgerItems(ops)}
-            </div>
-          </div>
+            ${ops.length > 20 ? (() => {
+              const half = Math.ceil(ops.length / 2);
+              const col1 = ops.slice(0, half);
+              const col2 = ops.slice(half);
+              const thead = `<thead><tr>
+                <th class="lcol-date">${t('pdf.col_date')}</th>
+                <th class="lcol-desc">${t('pdf.col_desc')}</th>
+                <th class="lcol-sign">${t('pdf.col_sign')}</th>
+                <th class="lcol-amt">${t('pdf.col_amount')}</th>
+                <th class="lcol-bal">${t('pdf.col_balance')}</th>
+              </tr></thead>`;
+              return `<div style="display: flex; gap: 8px;">
+                <table class="ledger-table" style="flex: 1;">${thead}<tbody>${renderLedgerRows(col1)}</tbody></table>
+                <table class="ledger-table" style="flex: 1;">${thead}<tbody>${renderLedgerRows(col2)}</tbody></table>
+              </div>`;
+            })() : `
+            <table class="ledger-table">
+              <thead>
+                <tr>
+                  <th class="lcol-date">${t('pdf.col_date')}</th>
+                  <th class="lcol-desc">${t('pdf.col_desc')}</th>
+                  <th class="lcol-sign">${t('pdf.col_sign')}</th>
+                  <th class="lcol-amt">${t('pdf.col_amount')}</th>
+                  <th class="lcol-bal">${t('pdf.col_balance')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderLedgerRows(ops)}
+              </tbody>
+            </table>`}
 
-          <div class="legend">
-            + = CRÉDIT (AUGMENTE LE SOLDE) | - = DÉBIT (DIMINUE LE SOLDE)
+            <div class="legend">
+              ${t('pdf.legend')}
+            </div>
           </div>
         </body>
       </html>
@@ -285,12 +290,12 @@ export async function generateDashboardPDF(
 
     await Sharing.shareAsync(newUri, {
       mimeType: 'application/pdf',
-      dialogTitle: 'Partager le rapport complet',
+      dialogTitle: t('pdf.share_title'),
       UTI: 'com.adobe.pdf'
     });
 
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Erreur inconnue';
-    Alert.alert('Erreur', `Impossible de générer le PDF\n${msg}`);
+    const msg = error instanceof Error ? error.message : '';
+    Alert.alert(t('pdf.error_title'), `${t('pdf.error_message')}\n${msg}`);
   }
 }

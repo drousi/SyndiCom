@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, FontSize, Radius, Spacing, Shadow } from '../../constants/theme';
+import { useThemeColors, FontSize, Radius, Spacing, Shadow, ThemeColors } from '../../constants/theme';
 
 export interface DropdownOption {
   label: string;
@@ -74,7 +74,7 @@ export function DropdownMenu({ options, children }: DropdownMenuProps) {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   overlay: { flex: 1 },
   menu: {
     position: 'absolute',

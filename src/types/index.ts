@@ -1,6 +1,6 @@
 // ─── Notification ───────────────────────────────────────────────────────────────
 
-export type NotificationType = 'reminder' | 'payment' | 'expense' | 'system';
+export type NotificationType = 'reminder' | 'payment' | 'payment_declaration' | 'expense' | 'system';
 
 export interface AppNotification {
   id: string;
@@ -10,6 +10,9 @@ export interface AppNotification {
   type: NotificationType;
   is_read: boolean;
   is_archived: boolean;
+  target_user_id: string | null;
+  related_declaration_id: string | null;
+  metadata: Record<string, any> | null;
   created_at: string;
 }
 
@@ -179,42 +182,6 @@ export interface UserResidenceWithProfile extends UserResidence {
   phone: string | null;
 }
 
-// ─── Sync Queue ────────────────────────────────────────────────────────────────
-
-export type SyncAction = 'INSERT' | 'UPDATE' | 'DELETE';
-export type EntityType =
-  | 'residences'
-  | 'apartments'
-  | 'contributions'
-  | 'expenses'
-  | 'expense_templates'
-  | 'profiles'
-  | 'user_residences'
-  | 'payment_declarations';
-
-export interface SyncQueueItem {
-  id: string;
-  entity_type: EntityType;
-  entity_id: string;
-  action: SyncAction;
-  payload: string;
-  synced: boolean;
-  retry_count: number;
-  created_at: string;
-}
-
-// ─── Activity Log ──────────────────────────────────────────────────────────────
-
-export interface ActivityLog {
-  id: string;
-  user_id: string | null;
-  action: string;
-  entity_type: string | null;
-  entity_id: string | null;
-  description: string | null;
-  created_at: string;
-}
-
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 
 export interface DashboardStats {
@@ -232,6 +199,7 @@ export interface DashboardStats {
 export interface RecentOperation {
   id: string;
   type: 'contribution' | 'expense';
+  expenseType?: string;
   label: string;
   sublabel: string;
   amount: number;

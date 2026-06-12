@@ -17,7 +17,7 @@ import { createResidenceWithAdmin } from '../../src/db/repositories/residences';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../src/constants/theme';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -172,7 +172,7 @@ export default function OnboardingScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   keyboardView: { flex: 1, backgroundColor: Colors.navy },
   scroll: { flex: 1 },
   content: {

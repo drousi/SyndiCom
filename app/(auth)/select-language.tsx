@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguageStore, LanguageCode } from '../../src/store/language.store';
 import { Button } from '../../src/components/ui/Button';
 import { Logo } from '../../src/components/ui/Logo';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow, ThemeColors } from '../../src/constants/theme';
 
 export default function SelectLanguageScreen() {
   const router = useRouter();
@@ -163,7 +163,7 @@ export default function SelectLanguageScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.navy,

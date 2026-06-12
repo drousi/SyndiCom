@@ -18,7 +18,7 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../src/constants/theme';
 import { useLanguageStore } from '../../src/store/language.store';
 
 export default function RegisterScreen() {
@@ -186,7 +186,7 @@ export default function RegisterScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   keyboardView: { flex: 1, backgroundColor: Colors.navy },
   scroll: { flex: 1 },
   content: {

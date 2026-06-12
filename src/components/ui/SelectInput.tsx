@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, Radius, FontSize, FontWeight, Spacing } from '../../constants/theme';
+import { useThemeColors, Radius, FontSize, FontWeight, Spacing, ThemeColors } from '../../constants/theme';
 import { DropdownMenu } from './DropdownMenu';
 
 interface SelectOption {
@@ -56,7 +56,7 @@ export function SelectInput({
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { width: '100%' },
   label: {
     fontSize: FontSize.sm,

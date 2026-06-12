@@ -17,7 +17,7 @@ import { resetPasswordSchema, ResetPasswordFormData } from '../../src/schemas';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../src/constants/theme';
 import { useLanguageStore } from '../../src/store/language.store';
 
 export default function ResetPasswordScreen() {
@@ -125,7 +125,7 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   content: {
     flexGrow: 1,

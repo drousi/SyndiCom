@@ -9,7 +9,7 @@ import { supabase } from '../../../src/supabase/client';
 import { Input } from '../../../src/components/ui/Input';
 import { Button } from '../../../src/components/ui/Button';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../../src/constants/theme';
 import { useThemeStore } from '../../../src/store/theme.store';
 import { ROLE_LABELS } from '../../../src/constants/app';
 import { useReminderStore } from '../../../src/store/reminder.store';
@@ -57,7 +57,7 @@ export default function SettingsScreen() {
       if (email !== profile?.email) {
         const { error: emailError } = await supabase.auth.updateUser({ email });
         if (emailError) throw emailError;
-        Alert.alert('Email mis à jour', 'Si la confirmation est activée, veuillez vérifier votre ancienne et nouvelle boîte mail.');
+        Alert.alert(t('settings.email_updated_title'), t('settings.email_updated_desc'));
       }
 
       const { error: profileError } = await supabase
@@ -66,12 +66,12 @@ export default function SettingsScreen() {
         .eq('id', profile?.id);
 
       if (profileError) throw profileError;
-      
+
       await loadSession(true);
       setIsEditingProfile(false);
-      Alert.alert('Succès', 'Profil mis à jour.');
+      Alert.alert(t('common.success'), t('settings.profile_updated'));
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message || 'Impossible de mettre à jour le profil');
+      Alert.alert(t('common.error'), e?.message || t('settings.profile_update_error'));
     } finally {
       setLoadingProfile(false);
     }
@@ -79,16 +79,16 @@ export default function SettingsScreen() {
 
   const handleUpdatePassword = async () => {
     if (!currentPassword) {
-      Alert.alert('Erreur', 'Veuillez saisir votre mot de passe actuel.');
+      Alert.alert(t('common.error'), t('settings.password_current_required'));
       return;
     }
     if (!password) return;
     if (password.length < 6) {
-      Alert.alert('Erreur', 'Le nouveau mot de passe doit faire au moins 6 caractères.');
+      Alert.alert(t('common.error'), t('settings.password_min_length'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+      Alert.alert(t('common.error'), t('settings.passwords_mismatch'));
       return;
     }
     setLoadingPassword(true);
@@ -99,18 +99,18 @@ export default function SettingsScreen() {
         password: currentPassword,
       });
       if (signInError) {
-        Alert.alert('Erreur', 'Le mot de passe actuel est incorrect.');
+        Alert.alert(t('common.error'), t('settings.password_current_wrong'));
         return;
       }
 
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      Alert.alert('Succès', 'Mot de passe mis à jour.');
+      Alert.alert(t('common.success'), t('settings.password_updated'));
       setCurrentPassword('');
       setPassword('');
       setConfirmPassword('');
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message || 'Impossible de mettre à jour le mot de passe');
+      Alert.alert(t('common.error'), e?.message || t('settings.password_update_error'));
     } finally {
       setLoadingPassword(false);
     }
@@ -534,7 +534,7 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   header: {
     flexDirection: 'row',

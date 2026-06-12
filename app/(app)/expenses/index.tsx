@@ -15,13 +15,13 @@ import { BalanceCard } from '../../../src/components/ui/BalanceCard';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily, ThemeColors } from '../../../src/constants/theme';
 import { EXPENSE_TYPES } from '../../../src/constants/app';
 import type { Expense, ExpenseTemplate } from '../../../src/types';
 
 type ListItem = Expense | ExpenseTemplate;
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, enUS, ar } from 'date-fns/locale';
 import { useLanguageStore } from '../../../src/store/language.store';
 
 export default function ExpensesScreen() {
@@ -32,7 +32,8 @@ export default function ExpensesScreen() {
   const canDelete = hasPermission('delete');
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
-  const { t } = useLanguageStore();
+  const { t, locale } = useLanguageStore();
+  const dateLocale = locale === 'ar' ? ar : locale === 'en' ? enUS : fr;
 
   const fontSemibold = useFontFamily('semibold');
 
@@ -110,7 +111,7 @@ export default function ExpensesScreen() {
   };
 
   const getExpenseLabel = (type: string) =>
-    EXPENSE_TYPES.find((et) => et.key === type)?.label ?? type;
+    t(`expense_types.${type}` as any) || EXPENSE_TYPES.find((et) => et.key === type)?.label || type;
 
   const getExpenseIcon = (type: string) =>
     (EXPENSE_TYPES.find((et) => et.key === type)?.icon ?? 'ellipsis-horizontal-outline') as any;
@@ -151,30 +152,32 @@ export default function ExpensesScreen() {
 
       <FlatList<ListItem>
         key={activeTab}
-        data={activeTab === 'expenses' ? expenses : templates}
+        data={activeTab === 'expenses' || !canWrite ? expenses : templates}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'expenses' && styles.tabActive]}
-              onPress={() => setActiveTab('expenses')}
-            >
-              <Text style={[styles.tabText, activeTab === 'expenses' && styles.tabTextActive, { fontFamily: fontSemibold }]}>
-                {t('expenses.monthly_expenses')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'templates' && styles.tabActive]}
-              onPress={() => setActiveTab('templates')}
-            >
-              <Text style={[styles.tabText, activeTab === 'templates' && styles.tabTextActive, { fontFamily: fontSemibold }]}>
-                {t('expenses.recurring_templates')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          canWrite ? (
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'expenses' && styles.tabActive]}
+                onPress={() => setActiveTab('expenses')}
+              >
+                <Text style={[styles.tabText, activeTab === 'expenses' && styles.tabTextActive, { fontFamily: fontSemibold }]}>
+                  {t('expenses.monthly_expenses')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'templates' && styles.tabActive]}
+                onPress={() => setActiveTab('templates')}
+              >
+                <Text style={[styles.tabText, activeTab === 'templates' && styles.tabTextActive, { fontFamily: fontSemibold }]}>
+                  {t('expenses.recurring_templates')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           activeTab === 'expenses' ? (
@@ -201,7 +204,7 @@ export default function ExpensesScreen() {
                     <Text style={styles.expenseDesc} numberOfLines={1}>{expense.description}</Text>
                   )}
                   <Text style={styles.expenseDate}>
-                    {format(new Date(expense.date), 'dd MMM yyyy', { locale: fr })}
+                    {format(new Date(expense.date), 'dd MMM yyyy', { locale: dateLocale })}
                   </Text>
                   {expense.status === 'pending_amount' && (
                     <Text style={{ color: Colors.warning, fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>
@@ -302,7 +305,7 @@ export default function ExpensesScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
 

@@ -8,7 +8,7 @@ import {
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
-import { useThemeColors, Radius, FontSize, FontWeight, Spacing, Shadow, useFontFamily } from '../../constants/theme';
+import { useThemeColors, Radius, FontSize, FontWeight, Spacing, Shadow, useFontFamily, ThemeColors } from '../../constants/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 type Size = 'sm' | 'md' | 'lg';
@@ -107,7 +107,7 @@ export function Button({
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',

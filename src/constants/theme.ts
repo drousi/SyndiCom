@@ -83,6 +83,8 @@ export const LightColors = {
 
 export const Colors = DarkColors; // Fallback for unmigrated files
 
+export type ThemeColors = typeof DarkColors;
+
 export const useThemeColors = () => {
   const isDark = useThemeStore((state) => state.getIsDark());
   return isDark ? DarkColors : LightColors;

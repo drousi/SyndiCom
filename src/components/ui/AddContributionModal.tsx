@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth.store';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily } from '../../constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, useFontFamily, ThemeColors } from '../../constants/theme';
 import { createContribution, updateContribution } from '../../db/repositories/contributions';
 import { Apartment, Contribution } from '../../types';
 import { SelectInput } from './SelectInput';
@@ -229,7 +229,7 @@ export function AddContributionModal({
   );
 }
 
-function createStyles(Colors: any) {
+function createStyles(Colors: ThemeColors) {
   return StyleSheet.create({
     modalOverlay: {
       flex: 1,

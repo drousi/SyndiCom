@@ -15,7 +15,7 @@ import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { FAB } from '../../../src/components/ui/FAB';
 import { Badge } from '../../../src/components/ui/Badge';
 import { DropdownMenu, DropdownOption } from '../../../src/components/ui/DropdownMenu';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow, ThemeColors } from '../../../src/constants/theme';
 import { useLanguageStore } from '../../../src/store/language.store';
 import type { Apartment } from '../../../src/types';
 
@@ -183,7 +183,7 @@ export default function ApartmentsScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
 

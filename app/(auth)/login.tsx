@@ -18,14 +18,14 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Logo } from '../../src/components/ui/Logo';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
-import { useLanguageStore } from '../../src/store/language.store';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../src/constants/theme';
+import { useLanguageStore, LanguageCode } from '../../src/store/language.store';
 
 export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { signIn, isLoading, error, clearError } = useAuthStore();
-  const { t } = useLanguageStore();
+  const { t, locale, setLocale } = useLanguageStore();
   const Colors = useThemeColors();
   const styles = React.useMemo(() => createStyles(Colors), [Colors]);
 
@@ -147,12 +147,31 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Language switcher */}
+        <View style={styles.langRow}>
+          {([
+            { code: 'fr', flag: '🇫🇷', label: 'Français' },
+            { code: 'en', flag: '🇬🇧', label: 'English' },
+            { code: 'ar', flag: '🇲🇦', label: 'العربية' },
+          ] as { code: LanguageCode; flag: string; label: string }[]).map(({ code, flag, label }) => (
+            <TouchableOpacity
+              key={code}
+              style={[styles.langBtn, locale === code && styles.langBtnActive]}
+              onPress={() => setLocale(code)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.langFlag}>{flag}</Text>
+              <Text style={[styles.langLabel, locale === code && styles.langLabelActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   keyboardView: { flex: 1, backgroundColor: Colors.navy },
   scroll: { flex: 1 },
   content: {
@@ -246,5 +265,39 @@ const createStyles = (Colors: any) => StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.primary,
     fontWeight: FontWeight.bold,
+  },
+
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingBottom: Spacing.lg,
+  },
+  langBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.navyBorder,
+    backgroundColor: Colors.navyCard,
+  },
+  langBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primarySurface,
+  },
+  langFlag: {
+    fontSize: 16,
+  },
+  langLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.medium,
+  },
+  langLabelActive: {
+    color: Colors.primary,
+    fontWeight: FontWeight.semibold,
   },
 });

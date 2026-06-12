@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, Radius, Spacing, FontSize, FontWeight } from '../../constants/theme';
+import { useThemeColors, Radius, Spacing, FontSize, FontWeight, ThemeColors } from '../../constants/theme';
 import { Button } from './Button';
 import { MONTHS_FR } from '../../constants/app';
 import { useLanguageStore } from '../../store/language.store';
@@ -147,7 +147,7 @@ export function DatePickerModal({ visible, date, onConfirm, onCancel }: DatePick
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center', alignItems: 'center', padding: Spacing.xl,

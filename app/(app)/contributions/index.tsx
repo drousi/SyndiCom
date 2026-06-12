@@ -13,7 +13,7 @@ import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { supabase } from '../../../src/supabase/client';
 import { ScreenHeader } from '../../../src/components/ui/ScreenHeader';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, Shadow, ThemeColors } from '../../../src/constants/theme';
 import { MONTHS_FR, MONTHS_SHORT_FR, getPeriodShortLabels } from '../../../src/constants/app';
 import { getApartmentsByResidence } from '../../../src/db/repositories/apartments';
 import { getContributionsByResidence, createContribution, updateContribution } from '../../../src/db/repositories/contributions';
@@ -127,7 +127,7 @@ export default function ContributionsScreen() {
         };
         await generateDashboardPDF(contributions, apartments, expenses, stats, activeResidence);
       } catch (error) {
-        Alert.alert('Erreur', 'Impossible de générer le PDF');
+        Alert.alert(t('common.error'), t('contributions.pdf_error'));
       }
     }
   };
@@ -151,7 +151,7 @@ export default function ContributionsScreen() {
         setIsCapturing(false);
         Alert.alert(t('common.error'), e.message);
       }
-    }, 150);
+    }, 300);
   };
 
   // Double Tap handling
@@ -240,7 +240,7 @@ export default function ContributionsScreen() {
         });
         processingCellsRef.current.delete(cellKey);
       } catch (e: any) {
-        Alert.alert('Erreur', 'Impossible de créer la contribution: ' + e.message);
+        Alert.alert(t('common.error'), t('contributions.create_error'));
         refetch().finally(() => processingCellsRef.current.delete(cellKey));
       }
     }
@@ -563,6 +563,14 @@ export default function ContributionsScreen() {
 
       </ScrollView>
 
+      {/* Capturing overlay */}
+      {isCapturing && (
+        <View style={styles.capturingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.capturingText}>{t('contributions.capturing')}</Text>
+        </View>
+      )}
+
       {/* FAB */}
       {canManage && (
         <>
@@ -617,7 +625,7 @@ export default function ContributionsScreen() {
   );
 }
 
-function createStyles(Colors: any) {
+function createStyles(Colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
@@ -682,6 +690,19 @@ function createStyles(Colors: any) {
     alignItems: 'center', justifyContent: 'center',
     zIndex: 100,
     ...Shadow.green,
+  },
+  capturingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    zIndex: 200,
+  },
+  capturingText: {
+    color: Colors.white,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
   },
 });
 }

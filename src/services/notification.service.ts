@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
+import { useLanguageStore } from '../store/language.store';
 
 // Initialiser le canal de rappel pour Android
 // On supprime avant de recréer pour forcer l'application du son personnalisé
@@ -32,16 +33,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return finalStatus === 'granted';
 }
 
-// Planifier un rappel récurrent de relance (tous les lundis à 10:00 par exemple)
-export async function scheduleWeeklyReminder() {
-  await scheduleConfiguredReminder({
-    enabled: true,
-    dayOfWeek: 2,
-    hour: 10,
-    minute: 0,
-  });
-}
-
 // Planifier un rappel de relance configurable
 export async function scheduleConfiguredReminder(settings: {
   enabled: boolean;
@@ -60,10 +51,12 @@ export async function scheduleConfiguredReminder(settings: {
   await setupNotificationChannels();
   await cancelAllReminders();
 
+  const { t } = useLanguageStore.getState();
+
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'SyndiCom 🔔',
-      body: 'C\'est l\'heure de vérifier les impayés et d\'envoyer les relances WhatsApp aux résidents !',
+      title: t('notifications_push.reminder_title'),
+      body: t('notifications_push.reminder_body'),
       sound: 'reminder.wav',
       channelId: 'reminders',
     },
@@ -83,10 +76,12 @@ export async function scheduleTestReminder() {
 
   await setupNotificationChannels();
 
+  const { t } = useLanguageStore.getState();
+
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Rappel de relance de Test 🔔',
-      body: 'Vérifiez les impayés et relancez les résidents par WhatsApp.',
+      title: t('notifications_push.test_title'),
+      body: t('notifications_push.test_body'),
       sound: 'reminder.wav',
       channelId: 'reminders',
     },

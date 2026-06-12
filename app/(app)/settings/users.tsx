@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActionSheet, ActionSheetOption } from '../../../src/components/ui/ActionSheet';
 import { supabase } from '../../../src/supabase/client';
 import { useAuthStore } from '../../../src/store/auth.store';
-import { useThemeColors, FontSize, FontWeight, Spacing, Radius } from '../../../src/constants/theme';
+import { useThemeColors, FontSize, FontWeight, Spacing, Radius, ThemeColors } from '../../../src/constants/theme';
 import { ROLE_LABELS } from '../../../src/constants/app';
 import type { UserResidenceWithProfile, ResidenceRole } from '../../../src/types';
 import { useLanguageStore } from '../../../src/store/language.store';
@@ -369,7 +369,7 @@ export default function UsersSettingsScreen() {
   );
 }
 
-const createStyles = (Colors: any) => StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navy },
   loadingContainer: { flex: 1, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
   
